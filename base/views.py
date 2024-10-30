@@ -1,3 +1,4 @@
+from django.forms import ValidationError
 from django.shortcuts import render, redirect
 from django.http import HttpResponse,request
 from django.contrib.auth import authenticate, login
@@ -9,9 +10,21 @@ from django.views.decorators.http import require_POST,require_http_methods
 from django.contrib.auth.decorators import user_passes_test
 from decimal import Decimal
 import logging
+from django.core.mail import send_mail
+from django.contrib import messages
+from django.shortcuts import render, redirect
+from django.utils.crypto import get_random_string
+from django.conf import settings
+import datetime
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import Flow
+from googleapiclient.discovery import build
+from django.conf import settings
+from django.shortcuts import redirect
+import json
 # views.py
 
-
+@never_cache
 def login_view(request):
     if request.method == 'POST':
         email = request.POST.get('email', '')
@@ -50,20 +63,23 @@ def home(request):
             customer = Customer.objects.get(customer_id=customer_id)
             products = Product.objects.all()
             
-            print(f"Number of products: {products.count()}")  # Debug print
+            # Debug logging
+            logger.info(f"Customer authenticated: {customer.email}")
+            logger.info(f"Number of products: {products.count()}")
             
-            # Set session data if not already set
-            if not request.session.get('customer_email'):
-                request.session['customer_email'] = customer.email
-            
-            return render(request, 'home.html', {'customer': customer, 'products': products})
+            return render(request, 'home.html', {
+                'customer': customer, 
+                'products': products
+            })
         except Customer.DoesNotExist:
-
+            logger.error(f"Customer ID {customer_id} not found in database")
+            request.session.flush()
             return redirect('login')
     else:
+        logger.info("No customer_id in session")
         return redirect('login')
 
-
+@never_cache
 def signup_view(request):
     if request.method == 'POST':
         name = request.POST['name']
@@ -122,6 +138,7 @@ from django.contrib import messages
 from django.shortcuts import redirect, render
 from .models import Product
 
+@never_cache
 def add_product(request):
     if request.method == 'POST':
         name = request.POST.get('product_name')
@@ -153,6 +170,7 @@ def add_product(request):
     return render(request, 'admin.html')
 
 @login_required
+@never_cache
 def product_admin(request):
     customer_id = request.session.get('customer_id')
     if not customer_id:
@@ -168,6 +186,7 @@ def product_admin(request):
     except Customer.DoesNotExist:
         return redirect('login')
 
+@never_cache
 def edit_profile(request):
     customer_id = request.session.get('customer_id')
     if not customer_id:
@@ -210,6 +229,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 logger = logging.getLogger(__name__)
 
+@never_cache
 @require_http_methods(["GET", "POST"])
 @csrf_exempt  # Remember to remove this after debugging
 def cart_view(request):
@@ -303,3 +323,177 @@ def cart_view(request):
     except Exception as e:
         logger.error(f"Error rendering cart: {str(e)}")
         return JsonResponse({'status': 'error', 'message': 'Error rendering cart'}, status=500)
+
+@never_cache
+def forgot_password(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        try:
+            customer = Customer.objects.get(email=email)
+            # Generate password reset token
+            token = get_random_string(length=32)
+            customer.reset_password_token = token
+            customer.reset_password_expires = datetime.datetime.now() + datetime.timedelta(hours=1)
+            customer.save()
+            
+            # Send reset email
+            reset_link = f"{request.scheme}://{request.get_host()}/reset-password/{token}/"
+            send_mail(
+                'Password Reset Request',
+                f'Click the following link to reset your password: {reset_link}',
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
+                fail_silently=False,
+            )
+            
+            return render(request, 'forgot_password.html', {
+                'message': {
+                    'type': 'success',
+                    'title': 'Success!',
+                    'text': 'Password reset link has been sent to your email.'
+                }
+            })
+        except Customer.DoesNotExist:
+            return render(request, 'forgot_password.html', {
+                'message': {
+                    'type': 'error',
+                    'title': 'Error',
+                    'text': 'No account found with this email address.'
+                }
+            })
+    
+    return render(request, 'forgot_password.html')
+
+@never_cache
+def reset_password(request, token):
+    try:
+        customer = Customer.objects.get(
+            reset_password_token=token,
+            reset_password_expires__gt=datetime.datetime.now()
+        )
+        
+        if request.method == 'POST':
+            password = request.POST.get('password')
+            confirm_password = request.POST.get('confirm_password')
+            
+            if password != confirm_password:
+                return render(request, 'reset_password.html', {
+                    'message': {
+                        'type': 'error',
+                        'title': 'Error',
+                        'text': 'Passwords do not match.'
+                    }
+                })
+            
+            customer.password = make_password(password)
+            customer.reset_password_token = None
+            customer.reset_password_expires = None
+            customer.save()
+            
+            messages.success(request, 'Password has been reset successfully. Please login with your new password.')
+            return redirect('login')
+            
+        return render(request, 'reset_password.html')
+        
+    except Customer.DoesNotExist:
+        return render(request, 'reset_password.html', {
+            'message': {
+                'type': 'error',
+                'title': 'Error',
+                'text': 'Invalid or expired reset link.'
+            }
+        })\
+        
+@never_cache
+def google_login(request):
+    flow = Flow.from_client_config(
+        {
+            "web": {
+                "client_id": settings.GOOGLE_CLIENT_ID,
+                "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": [settings.GOOGLE_REDIRECT_URI],
+            }
+        },
+        scopes=['https://www.googleapis.com/auth/userinfo.email', 
+                'https://www.googleapis.com/auth/userinfo.profile',
+                'openid']
+    )
+    
+    flow.redirect_uri = settings.GOOGLE_REDIRECT_URI
+    
+    authorization_url, state = flow.authorization_url(
+        access_type='offline',
+        include_granted_scopes='true'
+    )
+    
+    request.session['google_auth_state'] = state
+    
+    return redirect(authorization_url)
+
+@never_cache
+def google_callback(request):
+    try:
+        # Create the flow using the client secrets
+        flow = Flow.from_client_config(
+            {
+                "web": {
+                    "client_id": settings.GOOGLE_CLIENT_ID,
+                    "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [settings.GOOGLE_REDIRECT_URI],
+                }
+            },
+            scopes=['https://www.googleapis.com/auth/userinfo.email', 
+                    'https://www.googleapis.com/auth/userinfo.profile',
+                    'openid']
+        )
+        
+        flow.redirect_uri = settings.GOOGLE_REDIRECT_URI
+        
+        # Use the authorization server's response to fetch the OAuth 2.0 tokens
+        authorization_response = request.build_absolute_uri()
+        flow.fetch_token(authorization_response=authorization_response)
+        
+        # Get credentials and create a service
+        credentials = flow.credentials
+        service = build('oauth2', 'v2', credentials=credentials)
+        
+        # Get user info
+        user_info = service.userinfo().get().execute()
+        
+        logger.info(f"Google user info: {user_info}")  # Debug log
+        
+        # Check if user exists
+        try:
+            customer = Customer.objects.get(email=user_info['email'])
+            logger.info(f"Existing customer found: {customer.email}")
+        except Customer.DoesNotExist:
+            # Create new customer
+            customer = Customer.objects.create(
+                name=user_info.get('name', ''),
+                email=user_info['email'],
+                password=make_password(None),  # Set a random password
+                # Add any other required fields with default values
+                phone='',  # Add default value if this is required
+                address=''  # Add default value if this is required
+            )
+            logger.info(f"New customer created: {customer.email}")
+        
+        # Set session data
+        request.session['customer_id'] = customer.customer_id
+        request.session['is_authenticated'] = True
+        request.session['customer_email'] = customer.email
+        request.session['customer_name'] = customer.name
+        
+        logger.info(f"Session data set for customer: {customer.customer_id}")
+        
+        messages.success(request, f'Welcome, {customer.name}!')
+        return redirect('home')
+        
+    except Exception as e:
+        logger.error(f"Google login error: {str(e)}")
+        messages.error(request, 'Google login failed. Please try again.')
+        return redirect('login')
