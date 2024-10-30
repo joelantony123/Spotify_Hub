@@ -1,0 +1,347 @@
+{% load static %}
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Edit Profile - Spotify Hub</title>
+
+    <!-- Bootstrap core CSS -->
+    <link rel="stylesheet" type="text/css" href="{% static 'assets/css/bootstrap.css' %}" />
+    <!-- Custom styles -->
+    <link href="{% static 'assets/css/style.css' %}" rel="stylesheet" />
+    <!-- Responsive style -->
+    <link href="{% static 'assets/css/responsive.css' %}" rel="stylesheet" />
+
+    <style>
+      .edit-profile-section {
+        padding: 100px 0;
+        background-color: #222831;
+        color: #ffffff;
+      }
+      .edit-profile-container {
+        background-color: #ffffff;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+      }
+      .edit-profile-heading {
+        color: #ffbe33;
+        margin-bottom: 30px;
+      }
+      .form-control {
+        margin-bottom: 20px;
+      }
+      .btn-submit {
+        background-color: #ffbe33;
+        color: #ffffff;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      .btn-submit:hover {
+        background-color: #e69c00;
+      }
+    </style>
+  </head>
+  <body>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Home</title>
+
+    <!-- <h1>Welcome, {{ customer.name }}!</h1>
+    <p>Email: {{ customer.email }}</p>
+    <p>Phone: {{ customer.phone }}</p>
+    <p>Address: {{ customer.address }}</p>
+
+     Logout Button -->
+    <!-- <form method="post" action="{% url 'logout' %}">
+      {% csrf_token %}
+      <button type="submit">Logout</button> -->
+    <!-- </form>  -->
+
+    <!-- Basic -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <!-- Mobile Metas -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <!-- Site Metas -->
+    <meta name="keywords" content="" />
+    <meta name="description" content="" />
+    <meta name="author" content="" />
+    <link
+      rel="shortcut icon"
+      href="{% static 'assets/images/favicon.png' %}"
+      type=""
+    />
+
+    <title>Feane</title>
+
+    <!-- bootstrap core css -->
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="{% static 'assets/css/bootstrap.css' %}"
+    />
+
+    <!--owl slider stylesheet -->
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.min.css"
+    />
+    <!-- nice select  -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/jquery-nice-select/1.1.0/css/nice-select.min.css"
+      integrity="sha512-CruCP+TD3yXzlvvijET8wV5WxxEh5H8P4cmz0RFbKK6FlZ2sYl3AEsKlLPHbniXKSrDdFewhbmBK5skbdsASbQ=="
+      crossorigin="anonymous"
+    />
+    <!-- font awesome style -->
+    <link href="{% static 'assets/css/font-awesome.min.css' %}" rel="stylesheet" />
+
+    <!-- Custom styles for this template -->
+    <link href="{% static 'assets/css/style.css' %}" rel="stylesheet" />
+    <!-- responsive style -->
+    <link href="{% static 'assets/css/responsive.css' %}" rel="stylesheet" />
+    <style>
+        /* ... (previous styles) ... */
+        .error-message {
+          color: #ff0000;
+          font-size: 0.9em;
+          margin-top: -15px;
+          margin-bottom: 15px;
+        }
+      </style>
+
+    <div class="hero_area">
+      <div class="bg-box">
+        <img src="{% static 'assets/images/hero-bg.jpg' %}" alt="" />
+      </div>
+    <div class="hero_area">
+      <!-- header section starts -->
+      <header class="header_section">
+        <div class="container">
+          <nav class="navbar navbar-expand-lg custom_nav-container">
+            <a class="navbar-brand" href="{% url 'home' %}">
+                <span> Spotify Hub </span>
+              </a>
+  
+              <button
+                class="navbar-toggler"
+                type="button"
+                data-toggle="collapse"
+                data-target="#navbarSupportedContent"
+                aria-controls="navbarSupportedContent"
+                aria-expanded="false"
+                aria-label="Toggle navigation"
+              >
+                <span class=""> </span>
+              </button>
+  
+              <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav mx-auto">
+                  <li class="nav-item active">
+                    <a class="nav-link" href="#"
+                      >Home <span class="sr-only">(current)</span></a
+                    >
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" href="#categories-section">Categories</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" href="#about">About</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" href="#contact">Contact</a>
+                  </li>
+                  <li class="nav-item dropdown">
+                      <a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                          Profile
+                      </a>
+                      <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+                          <li><a class="dropdown-item" href="{% url 'edit_profile'  %}">
+                              <strong></strong> Edit Profile
+                          </a></li>
+                          <li><hr class="dropdown-divider"></li>
+                          <li><a class="dropdown-item" href="#">
+                              <strong>Name</strong> {{ customer.name }}
+                          </a></li>
+                          <li><a class="dropdown-item" href="#">
+                              <strong>Email:</strong> {{ customer.email }}
+                          </a></li>
+                          <li><a class="dropdown-item" href="#">
+                              <strong>Phone:</strong> {{ customer.phone }}
+                          </a></li>
+                          <li><a class="dropdown-item" href="#">
+                              <strong>Address:</strong> {{ customer.address }}
+                          </a></li>
+                      </ul>
+                  </li>
+                  <li class="nav-item">
+                      <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+                  </li>
+                </ul>
+                <div class="user_option">
+                   <a href="" class="user_link"> 
+                  </a>
+                  <a class="cart_link" href="#">
+                    <svg
+                      version="1.1"
+                      id="Capa_1"
+                      xmlns="http://www.w3.org/2000/svg"
+                      xmlns:xlink="http://www.w3.org/1999/xlink"
+                      x="0px"
+                      y="0px"
+                      viewBox="0 0 456.029 456.029"
+                      style="enable-background:new 0 0 456.029 456.029;"
+                      xml:space="preserve"
+                    >
+                      <g>
+                        <g>
+                          <path
+                            d="M345.6,338.862c-29.184,0-53.248,23.552-53.248,53.248c0,29.184,23.552,53.248,53.248,53.248
+                     c29.184,0,53.248-23.552,53.248-53.248C398.336,362.926,374.784,338.862,345.6,338.862z"
+                          ></path>
+                        </g>
+                      </g>
+                      <g>
+                        <g>
+                          <path
+                            d="M439.296,84.91c-1.024,0-2.56-0.512-4.096-0.512H112.64l-5.12-34.304C104.448,27.566,84.992,10.67,61.952,10.67H20.48
+                     C9.216,10.67,0,19.886,0,31.15c0,11.264,9.216,20.48,20.48,20.48h41.472c2.56,0,4.608,2.048,5.12,4.608l31.744,216.064
+                     c4.096,27.136,27.648,47.616,55.296,47.616h212.992c26.624,0,49.664-18.944,55.296-45.056l33.28-166.4
+                     C457.728,97.71,450.56,86.958,439.296,84.91z"
+                          ></path>
+                        </g>
+                      </g>
+                      <g>
+                        <g>
+                          <path
+                            d="M215.04,389.55c-1.024-28.16-24.576-50.688-52.736-50.688c-29.696,1.536-52.224,26.112-51.2,55.296
+                     c1.024,28.16,24.064,50.688,52.224,50.688h1.024C193.536,443.31,216.576,418.734,215.04,389.55z"
+                          ></path>
+                        </g>
+                      </g>
+                    </svg>
+                  </a>
+                  <!-- <form class="form-inline">
+                    {% csrf_token %}
+                    <button class="btn my-2 my-sm-0 nav_search-btn" type="submit">
+                      <i class="fa fa-search" aria-hidden="true"></i>
+                    </button>
+                  </form> -->
+                  <a href="#" class="order_online"> Search </a>
+                </div>
+              </div
+          </nav>
+        </div>
+      </header>
+      <!-- end header section -->
+    </div>
+
+    <!-- edit profile section -->
+    <section class="edit-profile-section layout_padding">
+      <div class="container">
+        <div class="row">
+          <div class="col-md-8 offset-md-2">
+            <div class="edit-profile-container">
+              <h2 class="edit-profile-heading text-center">Edit Your Profile</h2>
+              <form action="{% url 'edit_profile' %}" method="post" id="editProfileForm">
+                {% csrf_token %}
+                <div class="form-group">
+                  <label for="name">Name</label>
+                  <input type="text" class="form-control" id="name" name="name" value="{{ customer.name }}" required minlength="2">
+                  <div class="error-message" id="nameError"></div>
+                </div>
+                <div class="form-group">
+                  <label for="email">Email</label>
+                  <input type="email" class="form-control" id="email" name="email" value="{{ customer.email }}" required>
+                  <div class="error-message" id="emailError"></div>
+                </div>
+                <div class="form-group">
+                  <label for="phone">Phone</label>
+                  <input type="tel" class="form-control" id="phone" name="phone" value="{{ customer.phone }}" required pattern="^\+?1?\d{9,15}$">
+                  <div class="error-message" id="phoneError"></div>
+                </div>
+                <div class="form-group">
+                  <label for="address">Address</label>
+                  <textarea class="form-control" id="address" name="address" rows="3" required minlength="5">{{ customer.address }}</textarea>
+                  <div class="error-message" id="addressError"></div>
+                </div>
+                <div class="text-center">
+                  <button type="submit" class="btn btn-submit">Save Changes</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- end edit profile section -->
+
+    <!-- footer section -->
+    <footer class="footer_section">
+      <div class="container">
+        <!-- Add your footer content here -->
+      </div>
+    </footer>
+    <!-- end footer section -->
+
+    <!-- JavaScript -->
+    <script src="{% static 'assets/js/jquery-3.4.1.min.js' %}"></script>
+    <script src="{% static 'assets/js/bootstrap.js' %}"></script>
+    <script src="{% static 'assets/js/custom.js' %}"></script>
+    <script>
+            document.getElementById('editProfileForm').addEventListener('submit', function(event) {
+              let isValid = true;
+              
+              // Name validation
+              const name = document.getElementById('name');
+              if (name.value.length < 2) {
+                document.getElementById('nameError').textContent = "Name must be at least 2 characters long.";
+                isValid = false;
+              } else {
+                document.getElementById('nameError').textContent = "";
+              }
+      
+              // Email validation
+              const email = document.getElementById('email');
+              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+              if (!emailRegex.test(email.value)) {
+                document.getElementById('emailError').textContent = "Please enter a valid email address.";
+                isValid = false;
+              } else {
+                document.getElementById('emailError').textContent = "";
+              }
+      
+              // Phone validation
+              const phone = document.getElementById('phone');
+              const phoneRegex = /^\+?1?\d{9,15}$/;
+              if (!phoneRegex.test(phone.value)) {
+                document.getElementById('phoneError').textContent = "Please enter a valid phone number.";
+                isValid = false;
+              } else {
+                document.getElementById('phoneError').textContent = "";
+              }
+      
+              // Address validation
+              const address = document.getElementById('address');
+              if (address.value.length < 5) {
+                document.getElementById('addressError').textContent = "Address must be at least 5 characters long.";
+                isValid = false;
+              } else {
+                document.getElementById('addressError').textContent = "";
+              }
+      
+              if (!isValid) {
+                event.preventDefault();
+              }
+            });
+          </script>
+  </body>
+</html>
