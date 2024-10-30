@@ -8,3 +8,5 @@ __pycache__/
 # Django migrations
 **/migrations/*
 !**/migrations/__init__.py
+
+.env

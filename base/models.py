@@ -8,6 +8,8 @@ class Customer(models.Model):
     password = models.CharField(max_length=128)
     phone = models.CharField(max_length=15, blank=True, null=True)
     address = models.TextField(blank=True, null=True)
+    reset_password_token = models.CharField(max_length=100, null=True, blank=True)
+    reset_password_expires = models.DateTimeField(null=True, blank=True)
 
     def set_password(self, raw_password):
         self.password = make_password(raw_password)
