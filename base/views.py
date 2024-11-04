@@ -11,7 +11,7 @@ from django.contrib.auth.decorators import user_passes_test
 from decimal import Decimal
 import logging
 from django.core.mail import send_mail
-from django.contrib import messages
+from django.contrib import messages 
 from django.shortcuts import render, redirect
 from django.utils.crypto import get_random_string
 from django.conf import settings
@@ -36,10 +36,10 @@ def login_view(request):
                 request.session['customer_id'] = customer.customer_id
                 request.session['is_authenticated'] = True  # Add this line
 
-                if customer.customer_id == 2:
+                if customer.user_type == 'admin':
                     return redirect('admin_dashboard')
-
-                return redirect('home')
+                else:
+                    return redirect('home')
             else:
                 return render(request, 'login.html', {
                     'error_message': "Invalid email or password.",
@@ -86,6 +86,8 @@ def signup_view(request):
         email = request.POST['email']
         password = request.POST['password']
         confirm_password = request.POST['confirm_password']
+        phone = request.POST['phone']
+        address = request.POST['address']
 
         if password != confirm_password:
             return HttpResponse("Passwords do not match.")
@@ -96,11 +98,18 @@ def signup_view(request):
                 'error_message': "Email already exists. Please use a different email address."
             })
 
-        # If email is unique, create the user
+        # If email is unique, create the user with phone and address
         hashed_password = make_password(password)
-        user = Customer(name=name, email=email, password=hashed_password)
+        user = Customer(
+            name=name, 
+            email=email, 
+            password=hashed_password, 
+            user_type='customer',
+            phone=phone,
+            address=address
+        )
         user.save()
-        return redirect('login')  # Redirect to login page after successful signup
+        return redirect('login')
 
     return render(request, 'signup.html')
 
@@ -127,10 +136,10 @@ def admin_dashboard(request):
 
 def is_admin(user):
     try:
-        # Assuming you're using session to store customer_id
         customer_id = user.session.get('customer_id')
-        return customer_id == 2  # Assuming admin has ID 2
-    except AttributeError:
+        customer = Customer.objects.get(customer_id=customer_id)
+        return customer.user_type == 'admin'
+    except (AttributeError, Customer.DoesNotExist):
         return False
 
 # @user_passes_test(is_admin, login_url='login')
@@ -497,3 +506,32 @@ def google_callback(request):
         logger.error(f"Google login error: {str(e)}")
         messages.error(request, 'Google login failed. Please try again.')
         return redirect('login')
+
+@never_cache
+def customer_table(request):
+    # Check if user is admin (you might want to add proper authentication)
+    customer_id = request.session.get('customer_id')
+    try:
+        customer = Customer.objects.get(customer_id=customer_id)
+        if customer.user_type != 'admin':
+            return redirect('login')
+    except Customer.DoesNotExist:
+        return redirect('login')
+
+    customers = Customer.objects.all()
+    return render(request, 'customer_table.html', {'customers': customers})
+
+from django.contrib import messages
+from django.shortcuts import redirect
+
+def toggle_user_status(request, user_id):
+    if request.method == 'POST':
+        try:
+            user = User.objects.get(id=user_id)
+            user.is_active = not user.is_active
+            user.save()
+            status = "activated" if user.is_active else "deactivated"
+            messages.success(request, f"User {user.email} has been {status}")
+        except User.DoesNotExist:
+            messages.error(request, "User not found")
+    return redirect('customer_table')

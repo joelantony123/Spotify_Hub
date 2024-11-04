@@ -29,12 +29,12 @@
                             </a>
                         </li>
                         <li>
-                            <a href="#" class="nav-link px-0 align-middle">
+                            <a href="{% url 'customer_table' %}" class="nav-link px-0 align-middle">
                                 <i class="fs-4 bi-people"></i> <span class="ms-1 d-none d-sm-inline">Customers</span>
                             </a>
                         </li>
                         <li>
-                            <a href="{% url 'base:logout' %}" class="nav-link px-0 align-middle">
+                            <a href="{% url 'logout' %}" class="nav-link px-0 align-middle">
                                 <i class="fs-4 bi-box-arrow-right"></i> <span class="ms-1 d-none d-sm-inline">Logout</span>
                             </a>
                         </li>
@@ -52,7 +52,7 @@
             <!-- Main Content -->
             <div class="col py-3">
                 <h2 class="mb-4">Add New Product</h2>
-                <form method="post" enctype="multipart/form-data" action="{% url 'add_product' %}">
+                <form method="post" enctype="multipart/form-data" >
                     {% csrf_token %}
                     <div class="mb-3">
                         <label for="productName" class="form-label">Product Name</label>
