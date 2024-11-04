@@ -73,6 +73,14 @@
                <p class="error" id="confirmPasswordError"></p>
             </div>
             <div class="field">
+               <input type="tel" name="phone" id="phone" placeholder="Phone Number" required>
+               <p class="error" id="phoneError"></p>
+            </div>
+            <div class="field">
+               <input type="text" name="address" id="address" placeholder="Address" required>
+               <p class="error" id="addressError"></p>
+            </div>
+            <div class="field">
                <input type="submit" value="Signup">
             </div>
             <div class="signup-link">
@@ -90,6 +98,8 @@
             const email = document.getElementById('email');
             const password = document.getElementById('password');
             const confirmPassword = document.getElementById('confirmPassword');
+            const phone = document.getElementById('phone');
+            const address = document.getElementById('address');
 
             // Name validation
             const nameRegex = /^[A-Za-z\s]+$/;
@@ -123,6 +133,23 @@
                isValid = false;
             } else {
                document.getElementById('confirmPasswordError').textContent = '';
+            }
+
+            // Phone validation
+            const phoneRegex = /^\+?[\d\s-]{10,}$/;
+            if (!phoneRegex.test(phone.value)) {
+               document.getElementById('phoneError').textContent = 'Please enter a valid phone number';
+               isValid = false;
+            } else {
+               document.getElementById('phoneError').textContent = '';
+            }
+
+            // Address validation
+            if (address.value.trim().length < 5) {
+               document.getElementById('addressError').textContent = 'Please enter a valid address';
+               isValid = false;
+            } else {
+               document.getElementById('addressError').textContent = '';
             }
 
             if (!isValid) {

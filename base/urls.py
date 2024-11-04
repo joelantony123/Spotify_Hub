@@ -12,4 +12,7 @@ urlpatterns = [
     path('reset-password/<str:token>/', views.reset_password, name='reset_password'),
     path('auth/google/login/', views.google_login, name='google_login'),
     path('auth/google/callback/', views.google_callback, name='google_callback'),
+    path('admin-dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('admin/customers/', views.customer_table, name='customer_table'),
+    path('toggle-user-status/<int:user_id>/', views.toggle_user_status, name='toggle_user_status'),
 ]

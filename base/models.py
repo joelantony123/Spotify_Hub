@@ -2,6 +2,11 @@ from django.db import models
 from django.contrib.auth.hashers import make_password, check_password
 
 class Customer(models.Model):
+    USER_TYPE_CHOICES = [
+        ('customer', 'Customer'),
+        ('admin', 'Admin'),
+    ]
+
     customer_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
@@ -10,6 +15,7 @@ class Customer(models.Model):
     address = models.TextField(blank=True, null=True)
     reset_password_token = models.CharField(max_length=100, null=True, blank=True)
     reset_password_expires = models.DateTimeField(null=True, blank=True)
+    user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='customer')
 
     def set_password(self, raw_password):
         self.password = make_password(raw_password)
