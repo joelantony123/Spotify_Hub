@@ -54,17 +54,32 @@
                             <th>Phone</th>
                             <th>Address</th>
                             <th>User Type</th>
+                            <th>Status</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for customer in customers %}
                         <tr>
-                            <td>{{ customer.customer_id }}</td>
+                            <td>{{ forloop.counter }}</td>
                             <td>{{ customer.name }}</td>
                             <td>{{ customer.email }}</td>
                             <td>{{ customer.phone|default:"-" }}</td>
                             <td>{{ customer.address|default:"-" }}</td>
                             <td>{{ customer.user_type }}</td>
+                            <td>
+                                <span class="badge {% if customer.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                                    {% if customer.is_active %}Active{% else %}Inactive{% endif %}
+                                </span>
+                            </td>
+                            <td>
+                                <form method="POST" action="{% url 'toggle_user_status' user_id=customer.customer_id %}" style="display: inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm {% if customer.is_active %}btn-danger{% else %}btn-success{% endif %}">
+                                        {% if customer.is_active %}Deactivate{% else %}Activate{% endif %}
+                                    </button>
+                                </form>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>

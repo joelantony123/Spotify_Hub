@@ -34,7 +34,9 @@ def login_view(request):
 
             if check_password(password, customer.password):
                 request.session['customer_id'] = customer.customer_id
-                request.session['is_authenticated'] = True  # Add this line
+                request.session['is_authenticated'] = True
+                request.session['customer_email'] = customer.email
+                request.session['customer_name'] = customer.name
 
                 if customer.user_type == 'admin':
                     return redirect('admin_dashboard')
@@ -43,15 +45,14 @@ def login_view(request):
             else:
                 return render(request, 'login.html', {
                     'error_message': "Invalid email or password.",
-                    'email': email  # Preserve the email input
+                    'email': email
                 })
         except Customer.DoesNotExist:
             return render(request, 'login.html', {
                 'error_message': "Invalid email or password.",
-                'email': email  # Preserve the email input
+                'email': email
             })
     
-    # If it's a GET request or any other method, just render the login page
     return render(request, 'login.html')
 
 
@@ -509,11 +510,12 @@ def google_callback(request):
 
 @never_cache
 def customer_table(request):
-    # Check if user is admin (you might want to add proper authentication)
+    # Add admin check
     customer_id = request.session.get('customer_id')
     try:
-        customer = Customer.objects.get(customer_id=customer_id)
-        if customer.user_type != 'admin':
+        admin_user = Customer.objects.get(customer_id=customer_id)
+        if admin_user.user_type != 'admin':
+            messages.error(request, 'Unauthorized access.')
             return redirect('login')
     except Customer.DoesNotExist:
         return redirect('login')
@@ -521,17 +523,29 @@ def customer_table(request):
     customers = Customer.objects.all()
     return render(request, 'customer_table.html', {'customers': customers})
 
-from django.contrib import messages
-from django.shortcuts import redirect
-
+@never_cache
 def toggle_user_status(request, user_id):
+    # Check if user is admin
+    customer_id = request.session.get('customer_id')
+    try:
+        admin_user = Customer.objects.get(customer_id=customer_id)
+        if admin_user.user_type != 'admin':
+            messages.error(request, 'Unauthorized access.')
+            return redirect('login')
+    except Customer.DoesNotExist:
+        return redirect('login')
+
     if request.method == 'POST':
         try:
-            user = User.objects.get(id=user_id)
-            user.is_active = not user.is_active
-            user.save()
-            status = "activated" if user.is_active else "deactivated"
-            messages.success(request, f"User {user.email} has been {status}")
-        except User.DoesNotExist:
-            messages.error(request, "User not found")
+            customer = Customer.objects.get(customer_id=user_id)
+            customer.is_active = not customer.is_active  # Toggle the status
+            customer.save()
+            
+            status_text = "activated" if customer.is_active else "deactivated"
+            messages.success(request, f'User {customer.name} has been {status_text}.')
+        except Customer.DoesNotExist:
+            messages.error(request, 'User not found.')
+        except Exception as e:
+            messages.error(request, f'Error updating user status: {str(e)}')
+    
     return redirect('customer_table')
