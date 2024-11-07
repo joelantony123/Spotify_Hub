@@ -8,14 +8,15 @@ class Customer(models.Model):
     ]
 
     customer_id = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
     password = models.CharField(max_length=128)
-    phone = models.CharField(max_length=15, blank=True, null=True)
-    address = models.TextField(blank=True, null=True)
+    phone = models.CharField(max_length=15)
+    address = models.TextField()
     reset_password_token = models.CharField(max_length=100, null=True, blank=True)
     reset_password_expires = models.DateTimeField(null=True, blank=True)
-    user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='customer')
+    user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES, default='customer')
+    is_active = models.BooleanField(default=True)
 
     def set_password(self, raw_password):
         self.password = make_password(raw_password)
