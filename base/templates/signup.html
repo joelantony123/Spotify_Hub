@@ -8,7 +8,8 @@
       <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
       <style>
         body {
-            background: linear-gradient(-135deg, #4158d0, #c850c0);
+            background: url("{% static 'assets/images/hero-bg.jpg' %}") no-repeat center center fixed;
+            background-size: cover;
          }
         .error {
             color: red;
@@ -42,6 +43,21 @@
 
         .google-btn i {
             font-size: 18px;
+        }
+
+        .wrapper {
+            background: rgba(255, 255, 255, 0.5); /* White with 80% opacity */
+            backdrop-filter: blur(10px); /* Adds a blur effect behind the wrapper */
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Make sure form elements remain readable */
+        .wrapper input[type="text"],
+        .wrapper input[type="email"],
+        .wrapper input[type="password"],
+        .wrapper input[type="tel"] {
+            color: black;
         }
       </style>
    </head>

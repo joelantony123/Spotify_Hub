@@ -4,7 +4,7 @@ from django.http import HttpResponse,request
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import make_password, check_password
-from .models import Customer,Product,Cart,CartItem
+from .models import Customer,Product,Cart,CartItem,Order,OrderItem
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST,require_http_methods
 from django.contrib.auth.decorators import user_passes_test
@@ -22,7 +22,13 @@ from googleapiclient.discovery import build
 from django.conf import settings
 from django.shortcuts import redirect
 import json
-# views.py
+from django.views.decorators.csrf import csrf_protect
+from django.http import JsonResponse
+from django.contrib import messages
+import stripe
+from django.urls import reverse
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
 
 @never_cache
 def login_view(request):
@@ -31,6 +37,13 @@ def login_view(request):
         password = request.POST.get('password', '')
         try:
             customer = Customer.objects.get(email=email)
+
+            # Check if user is active before allowing login
+            if not customer.is_active:
+                return render(request, 'login.html', {
+                    'error_message': "Your account has been deactivated. Please contact admin.",
+                    'email': email
+                })
 
             if check_password(password, customer.password):
                 request.session['customer_id'] = customer.customer_id
@@ -133,7 +146,32 @@ def custom_logout(request):
     return response
 
 def admin_dashboard(request):
-    return render(request,'admin.html')
+    if request.method == 'POST':
+        try:
+            name = request.POST.get('product_name')
+            description = request.POST.get('product_description')
+            price = request.POST.get('product_price')
+            category = request.POST.get('product_category')
+            image = request.FILES.get('product_image')
+            stock = request.POST.get('product_stock')
+
+            product = Product(
+                name=name,
+                description=description,
+                price=price,
+                category=category,
+                image=image,
+                stock=stock
+            )
+            product.save()
+            messages.success(request, f'Product "{name}" has been added successfully.')
+            return redirect('admin_dashboard')
+        except Exception as e:
+            messages.error(request, f'Error adding product: {str(e)}')
+    
+    # Get all products to display in admin dashboard
+    products = Product.objects.all()
+    return render(request, 'admin.html', {'products': products})
 
 def is_admin(user):
     try:
@@ -327,6 +365,7 @@ def cart_view(request):
             'cart_total': cart_total,
             'tax': tax,
             'total_with_tax': total_with_tax,
+            'stripe_publishable_key': settings.STRIPE_PUBLISHABLE_KEY,
         }
         logger.info("Rendering cart template")
         return render(request, 'cart.html', context)
@@ -507,7 +546,7 @@ def google_callback(request):
         logger.error(f"Google login error: {str(e)}")
         messages.error(request, 'Google login failed. Please try again.')
         return redirect('login')
-
+ 
 @never_cache
 def customer_table(request):
     # Add admin check
@@ -549,3 +588,252 @@ def toggle_user_status(request, user_id):
             messages.error(request, f'Error updating user status: {str(e)}')
     
     return redirect('customer_table')
+
+@require_POST
+def delete_product(request, product_id):
+    try:
+        product = Product.objects.get(id=product_id)
+        product_name = product.name
+        product.delete()
+        messages.success(request, f'Product "{product_name}" has been deleted successfully.')
+    except Product.DoesNotExist:
+        messages.error(request, 'Product not found.')
+    return redirect('admin_dashboard')
+
+def edit_product(request, product_id):
+    try:
+        product = Product.objects.get(id=product_id)
+        if request.method == 'POST':
+            product.name = request.POST.get('product_name')
+            product.description = request.POST.get('product_description')
+            product.price = request.POST.get('product_price')
+            product.category = request.POST.get('product_category')
+            product.stock = request.POST.get('product_stock')
+            
+            if 'product_image' in request.FILES:
+                product.image = request.FILES['product_image']
+            
+            product.save()
+            messages.success(request, f'Product "{product.name}" has been updated successfully.')
+            return redirect('admin_dashboard')
+            
+        return render(request, 'edit_product.html', {'product': product})
+    except Product.DoesNotExist:
+        messages.error(request, 'Product not found.')
+        return redirect('admin_dashboard')
+
+@csrf_protect
+@require_POST
+@never_cache
+def remove_from_cart(request, item_id):
+    logger.info(f"Removing cart item ID: {item_id}")
+    
+    # Get customer from session
+    customer_id = request.session.get('customer_id')
+    if not customer_id:
+        return JsonResponse({'status': 'error', 'message': 'Not authenticated'}, status=401)
+    
+    try:
+        # Get the cart item and verify it belongs to the current user
+        cart_item = CartItem.objects.select_related('cart', 'product').get(
+            id=item_id,
+            cart__user__customer_id=customer_id
+        )
+        
+        # Store product name before deletion
+        product_name = cart_item.product.name
+        
+        # Delete the cart item
+        cart_item.delete()
+        
+        # Add success message
+        messages.success(request, f'{product_name} has been removed from your cart.')
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'{product_name} has been removed from your cart'
+        })
+        
+    except CartItem.DoesNotExist:
+        logger.error(f"Cart item {item_id} not found or doesn't belong to user")
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Item not found'
+        }, status=404)
+        
+    except Exception as e:
+        logger.error(f"Error removing cart item: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'message': 'An error occurred while removing the item'
+        }, status=500)
+
+@require_POST
+@never_cache
+def update_cart_item(request, item_id):
+    try:
+        cart_item = CartItem.objects.select_related('cart', 'product').get(
+            id=item_id,
+            cart__user__customer_id=request.session.get('customer_id')
+        )
+        
+        quantity = int(request.POST.get('quantity', 1))
+        if quantity > cart_item.product.stock:
+            return JsonResponse({
+                'status': 'error',
+                'message': f'Only {cart_item.product.stock} items available in stock'
+            }, status=400)
+        
+        cart_item.quantity = quantity
+        cart_item.save()
+        
+        # Calculate new totals
+        cart = cart_item.cart
+        cart_total = sum(item.product.price * item.quantity for item in cart.items.all())
+        tax = Decimal('0.10') * cart_total
+        total_with_tax = cart_total + tax
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Cart updated successfully',
+            'cart_total': str(cart_total),
+            'tax': str(tax),
+            'total_with_tax': str(total_with_tax)
+        })
+        
+    except CartItem.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Cart item not found'
+        }, status=404)
+    except Exception as e:
+        logger.error(f"Error updating cart: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Error updating cart'
+        }, status=500)
+
+@never_cache
+def create_checkout_session(request):
+    try:
+        customer = Customer.objects.get(customer_id=request.session.get('customer_id'))
+        cart = Cart.objects.get(user=customer)
+        cart_items = cart.items.all()
+        
+        # Create line items for Stripe
+        line_items = [{
+            'price_data': {
+                'currency': 'inr',
+                'product_data': {
+                    'name': item.product.name,
+                    'description': item.product.description,
+                },
+                'unit_amount': int(item.product.price * 100),  # Convert to paise
+            },
+            'quantity': item.quantity,
+        } for item in cart_items]
+
+        # Create Stripe checkout session
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=['card'],
+            line_items=line_items,
+            mode='payment',
+            customer_email=customer.email,
+            success_url=request.build_absolute_uri(reverse('payment_success')) + '?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url=request.build_absolute_uri(reverse('payment_cancelled')),
+            metadata={
+                'customer_id': customer.customer_id,
+            }
+        )
+        
+        return JsonResponse({'sessionId': checkout_session.id})
+        
+    except Exception as e:
+        logger.error(f"Error creating checkout session: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@never_cache
+def payment_success(request):
+    try:
+        session_id = request.GET.get('session_id')
+        if session_id:
+            session = stripe.checkout.Session.retrieve(session_id)
+            customer_id = session.metadata.get('customer_id')
+            
+            customer = Customer.objects.get(customer_id=customer_id)
+            cart = Cart.objects.get(user=customer)
+            
+            # Create order
+            total_amount = sum(item.quantity * item.product.price for item in cart.items.all())
+            order = Order.objects.create(
+                customer=customer,
+                total_amount=total_amount,
+                status='completed',
+                payment_id=session.payment_intent
+            )
+            
+            # Create order items
+            for cart_item in cart.items.all():
+                OrderItem.objects.create(
+                    order=order,
+                    product=cart_item.product,
+                    quantity=cart_item.quantity,
+                    price=cart_item.product.price,
+                    product_name=cart_item.product.name
+                )
+            
+            # Clear cart
+            cart.items.all().delete()
+            
+            messages.success(request, 'Payment successful! Your order has been placed.')
+        return render(request, 'payment_success.html')
+    except Exception as e:
+        logger.error(f"Error processing successful payment: {str(e)}")
+        messages.error(request, 'Error processing payment confirmation.')
+        return redirect('cart_view')
+
+@never_cache
+def payment_cancelled(request):
+    messages.warning(request, 'Payment was cancelled.')
+    return render(request, 'payment_cancelled.html')
+
+@csrf_exempt
+def stripe_webhook(request):
+    payload = request.body
+    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+        )
+
+        if event['type'] == 'checkout.session.completed':
+            session = event['data']['object']
+            customer_id = session['metadata']['customer_id']
+            
+            # Handle successful payment (e.g., update order status, send confirmation email)
+            logger.info(f"Payment completed for customer {customer_id}")
+
+    except Exception as e:
+        logger.error(f"Webhook error: {str(e)}")
+        return HttpResponse(status=400)
+
+    return HttpResponse(status=200)
+
+@never_cache
+def purchase_history(request):
+    customer_id = request.session.get('customer_id')
+    if not customer_id:
+        return redirect('login')
+    
+    try:
+        customer = Customer.objects.get(customer_id=customer_id)
+        orders = Order.objects.filter(user=customer).order_by('-order_date')
+        
+        context = {
+            'orders': orders,
+            'customer': customer
+        }
+        return render(request, 'purchase_his.html', context)
+    except Customer.DoesNotExist:
+        return redirect('login')
