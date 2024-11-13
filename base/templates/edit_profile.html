@@ -21,6 +21,12 @@
       <link href="{% static 'assets/css/responsive.css' %}" rel="stylesheet" />
 
     <style>
+      body {
+        background-image: url("{% static 'assets/images/@hero-bg.jpg' %}");
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+      }
       .edit-profile-section {
         padding: 100px 0;
         background-color: #222831;
@@ -122,7 +128,7 @@
 
     <div class="hero_area">
       <div class="bg-box">
-        <img src="{% static 'assets/images/hero-bg.jpg' %}" alt="" />
+        <img src="{% static 'assets/images/@hero-bg.jpg' %}" alt="" />
       </div>
     <div class="hero_area">
       <!-- header section starts -->
@@ -191,7 +197,7 @@
                 <div class="user_option">
                    <a href="" class="user_link"> 
                   </a>
-                  <a class="cart_link" href="#">
+                  <!-- <a class="cart_link" href="#">
                     <svg
                       version="1.1"
                       id="Capa_1"
@@ -230,14 +236,14 @@
                         </g>
                       </g>
                     </svg>
-                  </a>
+                  </a> -->
                   <!-- <form class="form-inline">
                     {% csrf_token %}
                     <button class="btn my-2 my-sm-0 nav_search-btn" type="submit">
                       <i class="fa fa-search" aria-hidden="true"></i>
                     </button>
                   </form> -->
-                  <a href="#" class="order_online"> Search </a>
+                  <!-- <a href="#" class="order_online"> Search </a> -->
                 </div>
               </div
           </nav>

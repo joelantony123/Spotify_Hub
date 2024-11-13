@@ -39,6 +39,32 @@
     <!-- responsive style -->
     <link href="{% static 'assets/css/responsive.css' %}" rel="stylesheet" />
     <style>
+        body {
+            background: url("{% static 'assets/images/hero-bg.jpg' %}") no-repeat center center fixed;
+            background-size: cover;
+            position: relative;
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6); /* Dark overlay */
+            z-index: -1;
+        }
+
+        .hero_area {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: transparent; /* Remove previous background */
+        }
+
         .heading_container.heading_center {
             -webkit-box-align: center;
             -ms-flex-align: center;
@@ -77,6 +103,424 @@
             width: 70px;
             font-weight: 600;
         }
+
+        .box {
+            position: relative;
+            margin-top: 25px;
+            background-color: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .box:hover {
+            transform: translateY(-5px);
+        }
+
+        .img-box {
+            position: relative;
+            padding: 20px;
+            height: 220px;
+            overflow: hidden;
+            border-radius: 15px 15px 0 0;
+        }
+
+        .img-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .box:hover .img-box img {
+            transform: scale(1.1);
+        }
+
+        .detail-box {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .detail-box h1 {
+            font-size: 3.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #ffffff; /* Keep heading white */
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .detail-box p {
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            color: #ffffff; /* Changed to white text color */
+            font-weight: 500;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); /* Dark text shadow for better readability */
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        @media (max-width: 768px) {
+            .detail-box h1 {
+                font-size: 2.5rem;
+            }
+
+            .detail-box p {
+                font-size: 1rem;
+            }
+        }
+
+        .options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .options h6 {
+            font-size: 18px;
+            color: #222831;
+            margin: 0;
+        }
+
+        .add-to-cart {
+            background-color: #ffbe33;
+            color: #ffffff;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 25px;
+            font-size: 14px;
+            transition: background-color 0.3s ease;
+        }
+
+        .add-to-cart:hover {
+            background-color: #e69c00;
+        }
+
+        .filters_menu {
+            padding: 0;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            list-style: none;
+            margin: 45px 0 20px 0;
+        }
+
+        .filters_menu li {
+            padding: 7px 25px;
+            cursor: pointer;
+            border-radius: 25px;
+            margin: 5px;
+            color: #222831;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .filters_menu li.active,
+        .filters_menu li:hover {
+            background-color: #222831;
+            color: #ffffff;
+        }
+
+        /* Alert Messages */
+        .alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            min-width: 300px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .box {
+                margin: 15px 10px;
+            }
+
+            .img-box {
+                height: 180px;
+            }
+
+            .filters_menu li {
+                padding: 5px 15px;
+                font-size: 14px;
+            }
+        }
+
+        /* Header Section Styles */
+        .header_section {
+            padding: 15px 0;
+            background: rgba(0, 0, 0, 0.6); /* Semi-transparent black background */
+        }
+
+        /* Navbar Styles */
+        .custom_nav-container {
+            padding: 0;
+        }
+
+        .navbar-brand {
+            color: #ffffff !important;
+            font-weight: bold;
+            font-size: 28px;
+        }
+
+        .navbar-brand span {
+            color: #ffbe33;
+        }
+
+        .custom_nav-container .navbar-nav .nav-link {
+            color: #ffffff;
+            text-align: center;
+            padding: 10px 25px;
+            transition: all 0.3s ease;
+        }
+
+        .custom_nav-container .navbar-nav .nav-link:hover,
+        .custom_nav-container .navbar-nav .nav-item.active .nav-link {
+            color: #ffbe33;
+        }
+
+        /* Slider Section Styles */
+        .slider_section {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            padding: 45px 0;
+        }
+
+        .slider_section .detail-box {
+            color: #ffffff;
+        }
+
+        .slider_section .detail-box h1 {
+            font-size: 3.5rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .slider_section .detail-box p {
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .slider_section .btn-box .btn1 {
+            display: inline-block;
+            padding: 12px 35px;
+            background-color: #ffbe33;
+            color: #ffffff;
+            border-radius: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .slider_section .btn-box .btn1:hover {
+            background-color: #e69c00;
+            transform: translateY(-2px);
+        }
+
+        /* Responsive Styles */
+        @media (max-width: 768px) {
+            .slider_section .detail-box h1 {
+                font-size: 2.5rem;
+            }
+
+            .slider_section .detail-box p {
+                font-size: 1rem;
+            }
+
+            .slider_section {
+                padding: 30px 0;
+            }
+        }
+
+        .food_section,
+        .book_section,
+        .client_section {
+            background: #ffffff;
+            position: relative;
+            z-index: 1;
+            padding: 45px 0;
+        }
+
+        .footer_section {
+            background: #222831;
+            position: relative;
+            z-index: 1;
+        }
+
+        .filters-content {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 0 15px;
+        }
+
+        .col-sm-12.col-md-4 {
+            flex: 0 0 100%;
+            max-width: 100%;
+            padding: 15px;
+        }
+
+        .box {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        }
+
+        .img-box {
+            width: 100%;
+            height: 500px;
+            overflow: hidden;
+        }
+
+        .img-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .detail-box {
+            padding: 30px 40px;
+        }
+
+        .detail-box h5 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+
+        .detail-box p {
+            font-size: 1.3rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+        }
+
+        .options h6 {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            padding: 15px 40px;
+            font-size: 1.3rem;
+        }
+
+        @media (min-width: 1600px) {
+            .col-sm-12.col-md-4 {
+                flex: 0 0 33.333%;
+                max-width: 33.333%;
+            }
+        }
+
+        @media (max-width: 1599px) {
+            .filters-content {
+                max-width: 1400px;
+            }
+            .box {
+                max-width: 500px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .box {
+                max-width: 100%;
+                margin-bottom: 20px;
+            }
+            .img-box {
+                height: 250px;
+            }
+        }
+
+        .col-sm-12.col-md-4 {
+            flex: 0 0 50%;
+            max-width: 50%;
+            padding: 15px;
+        }
+
+        .box {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        }
+
+        .img-box {
+            width: 100%;
+            height: 400px;
+            overflow: hidden;
+        }
+
+        .img-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .detail-box {
+            padding: 30px;
+        }
+
+        .detail-box h5 {
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+        }
+
+        .detail-box p {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+        }
+
+        .options h6 {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            padding: 12px 30px;
+            font-size: 1.2rem;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 1200px) {
+            .col-sm-12.col-md-4 {
+                flex: 0 0 100%;
+                max-width: 100%;
+            }
+        }
     </style>
 </head>
 
@@ -85,9 +529,6 @@
     
 
     <div class="hero_area">
-        <div class="bg-box">
-            <img src="{% static 'assets/images/hero-bg.jpg' %}" alt="" />
-        </div>
         <!-- header section strats -->
         <header class="header_section">
             <div class="container">
@@ -108,7 +549,7 @@
                                 <a class="nav-link" href="#">Home <span class="sr-only">(current)</span></a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="#categories-section">Categories</a>
+                                <a class="nav-link" href="#categories-section">Product</a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link" href="#about">About</a>
@@ -141,10 +582,13 @@
                                             <strong>Address:</strong> {{ customer.address }}
                                         </a></li>
                                 </ul>
+                            </li><li class="nav-item">
+                                <a class="nav-link" href="{% url 'purchase_history' %}">Purchase History</a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link" href="{% url 'logout' %}">Logout</a>
                             </li>
+                            
                         </ul>
                         <div class="user_option">
                             <a href="" class="user_link">
@@ -152,7 +596,7 @@
                             <a class="cart_link" href="{% url 'cart_view' %}">
                                 <svg version="1.1" id="Capa_1" xmlns="http://www.w3.org/2000/svg"
                                     xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-                                    viewBox="0 0 456.029 456.029" style="enable-background:new 0 0 456.029 456.029;"
+                                    viewBox="0 0 456.029 456.029" style="enable-background:new 0 0 456.029 456.029; fill: #ffbe33;"
                                     xml:space="preserve">
                                     <g>
                                         <g>
@@ -183,7 +627,7 @@
                     <i class="fa fa-search" aria-hidden="true"></i>
                   </button>
                 </form> -->
-                            <a href="#" class="order_online"> Search </a>
+                            <a href="#" class="order_online"> Search</a>
                         </div>
                     </div>
                 </nav>
@@ -206,9 +650,9 @@
                                             game.
                                             Shop now for unbeatable prices and performance!
                                         </p>
-                                        <div class="btn-box">
+                                        <!-- <div class="btn-box">
                                             <a href="" class="btn1"> Shop Now </a>
-                                        </div>
+                                        </div> -->
                                     </div>
                                 </div>
                             </div>
@@ -226,9 +670,9 @@
                                             game.
                                             Shop now for unbeatable prices and performance!
                                         </p>
-                                        <div class="btn-box">
+                                        <!-- <div class="btn-box">
                                             <a href="" class="btn1"> Shop Now </a>
-                                        </div>
+                                        </div> -->
                                     </div>
                                 </div>
                             </div>
@@ -350,25 +794,18 @@
             <div class="filters-content">
                 <div class="row">
                     {% for product in products %}
-                    {% if forloop.counter0|divisibleby:3 %}
-                    {% if not forloop.first %}
-                </div>
-                {% endif %}
-                <div class="row mb-4">
-                    {% endif %}
-                    <div class="col-sm-12 col-md-4">
+                    <div class="col-sm-12 col-lg-4 col-md-6 mb-4">
                         <div class="box">
                             <div class="img-box">
                                 {% if product.image %}
                                 <img src="{{ product.image.url }}" alt="{{ product.name }}" class="img-fluid" />
                                 {% else %}
-                                <img src="{% static 'assets/images/pop.png' %}" alt="{{ product.name }}"
-                                    class="img-fluid" />
+                                <img src="{% static 'assets/images/pop.png' %}" alt="{{ product.name }}" class="img-fluid" />
                                 {% endif %}
                             </div>
                             <div class="detail-box">
                                 <h5>{{ product.name }}</h5>
-                                <p>{{ product.description }}</p>
+                                <p style="color: #000;">{{ product.description }}</p>
                                 <div class="options">
                                     <h6>₹{{ product.price }}</h6>
                                     <button class="btn btn-primary add-to-cart" data-product-id="{{ product.id }}">
@@ -378,18 +815,19 @@
                             </div>
                         </div>
                     </div>
-                    {% if forloop.last %}
+                    {% if forloop.counter|divisibleby:3 %}
+                    </div><div class="row">
+                    {% endif %}
+                    {% empty %}
+                    <div class="col-12">
+                        <p>No products available at the moment.</p>
+                    </div>
+                    {% endfor %}
                 </div>
-                {% endif %}
-                {% empty %}
-                <div class="col-12">
-                    <p>No products available at the moment.</p>
-                </div>
-                {% endfor %}
             </div>
         </div>
         <div class="btn-box">
-            <a href=""> View More </a>
+            <!-- <a href=""> View More </a> -->
         </div>
         </div>
     </section>

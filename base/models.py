@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.hashers import make_password, check_password
+from django.contrib.auth.models import User
 
 class Customer(models.Model):
     USER_TYPE_CHOICES = [
@@ -66,6 +67,28 @@ class CartItem(models.Model):
     @property
     def total_price(self):
         return self.quantity * self.product.price
+
+class Order(models.Model):
+    user = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    order_date = models.DateTimeField(auto_now_add=True)
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=[
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled')
+    ], default='pending')
+
+    def __str__(self):
+        return f"Order #{self.id} by {self.user.name}"
+
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE,null=True)
+    product_name = models.CharField(max_length=200,null=True)
+    quantity = models.IntegerField(null=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2,null=True)
+
+    def __str__(self):
+        return f"{self.quantity}x {self.product_name}"
 
 
 

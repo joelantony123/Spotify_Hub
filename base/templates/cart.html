@@ -52,10 +52,17 @@
       background-color: #e74c3c;
       color: #ffffff;
     }
+
+    .order_online {
+      background-color: #007bff;
+    }
   </style>
 </head>
 
 <body class="sub_page">
+  <!-- Add this right after the opening <body> tag -->
+  {% csrf_token %}
+
   <div class="hero_area">
     <!-- header section starts -->
     <header class="header_section">
@@ -107,7 +114,7 @@
       <div class="row">
         <div class="col-md-8">
           {% for item in cart_items %}
-          <div class="cart_item">
+          <div class="cart_item" data-cart-item="{{ item.id }}">
             <div class="row align-items-center">
               <div class="col-md-2">
                 <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="img-fluid">
@@ -123,8 +130,8 @@
                 <input type="number" class="form-control" value="{{ item.quantity }}" min="1" max="{{ item.product.stock }}">
               </div>
               <div class="col-md-2">
-                <button class="btn btn-sm btn-update">Update</button>
-                <button class="btn btn-sm btn-remove">Remove</button>
+                <!-- <button class="btn btn-sm btn-update">Update</button> -->
+                <button class="btn btn-sm btn-remove" onclick="removeFromCart({{ item.id }})">Remove</button>
               </div>
             </div>
           </div>
@@ -135,12 +142,14 @@
           {% endfor %}
         </div>
         <div class="col-md-4">
-          <div class="cart_total">
+          <div class="cart_total" style="color: black;">
             <h4>Cart Total</h4>
             <p>Subtotal: ${{ cart_total }}</p>
             <p>Tax: ₹{{ tax }}</p>
             <h5>Total: ${{ total_with_tax }}</h5>
-            <a href="#" class="btn btn-block order_online">Proceed to Checkout</a>
+            <button id="checkout-button" class="btn btn-block order_online" style="background-color: #007bff; color: white;">
+                Proceed to Payment
+            </button>
           </div>
         </div>
       </div>
@@ -149,7 +158,7 @@
   <!-- end cart section -->
 
   <!-- footer section -->
-  <footer class="footer_section">
+  <!-- <footer class="footer_section">
     <div class="container">
       <div class="row">
         <div class="col-md-4 footer-col">
@@ -219,19 +228,157 @@
           </p>
         </div>
       </div>
-      <div class="footer-info">
-        <p>
-          &copy; <span id="displayYear"></span> All Rights Reserved By
-          <a href="https://html.design/">Free Html Templates</a><br><br>
-          &copy; <span id="displayYear"></span> Distributed By
-          <a href="https://themewagon.com/" target="_blank">ThemeWagon</a>
-        </p>
-      </div>
+      
     </div>
-  </footer>
+  </footer> -->
   <!-- footer section -->
 
   <!-- jQery -->
   <script src="{% static 'assets/js/jquery-3.4.1.min.js' %}"></script>
   <!-- popper js -->
-  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/popper.min.js"></script>
+
+  <!-- Update the JavaScript code before the closing </body> tag -->
+  <script>
+  function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+          const cookies = document.cookie.split(';');
+          for (let i = 0; i < cookies.length; i++) {
+              const cookie = cookies[i].trim();
+              if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                  cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                  break;
+              }
+          }
+      }
+      return cookieValue;
+  }
+
+  function updateCartItem(itemId, quantity) {
+      const csrftoken = getCookie('csrftoken');
+      
+      fetch(`/update-cart/${itemId}/`, {
+          method: 'POST',
+          headers: {
+              'X-CSRFToken': csrftoken,
+              'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: `quantity=${quantity}`
+      })
+      .then(response => response.json())
+      .then(data => {
+          if (data.status === 'success') {
+              // Update the displayed totals
+              document.querySelector('p:contains("Subtotal")').textContent = `Subtotal: ₹${data.cart_total}`;
+              document.querySelector('p:contains("Tax")').textContent = `Tax: ₹${data.tax}`;
+              document.querySelector('h5:contains("Total")').textContent = `Total: ₹${data.total_with_tax}`;
+          } else {
+              alert(data.message);
+          }
+      })
+      .catch(error => {
+          console.error('Error:', error);
+          alert('Error updating cart');
+      });
+  }
+
+  // Add event listeners to quantity inputs
+  document.querySelectorAll('.cart_item input[type="number"]').forEach(input => {
+      input.addEventListener('change', function() {
+          const cartItem = this.closest('.cart_item');
+          const itemId = cartItem.dataset.cartItem;
+          updateCartItem(itemId, this.value);
+      });
+  });
+
+  // Update the Update button click handler
+  document.querySelectorAll('.btn-update').forEach(button => {
+      button.addEventListener('click', function() {
+          const cartItem = this.closest('.cart_item');
+          const itemId = cartItem.dataset.cartItem;
+          const quantity = cartItem.querySelector('input[type="number"]').value;
+          updateCartItem(itemId, quantity);
+      });
+  });
+
+  function removeFromCart(itemId) {
+      console.log('Remove button clicked for item:', itemId);
+      
+      if (confirm('Are you sure you want to remove this item from your cart?')) {
+          const csrftoken = getCookie('csrftoken');
+          console.log('CSRF Token:', csrftoken);
+          
+          fetch(`/remove-from-cart/${itemId}/`, {
+              method: 'POST',
+              headers: {
+                  'X-CSRFToken': csrftoken,
+                  'Content-Type': 'application/json'
+              },
+              credentials: 'same-origin'
+          })
+          .then(response => {
+              console.log('Response status:', response.status);
+              if (response.ok) {
+                  return response.json();
+              }
+              throw new Error('Network response was not ok');
+          })
+          .then(data => {
+              console.log('Response data:', data);
+              if (data.status === 'success') {
+                  const cartItem = document.querySelector(`[data-cart-item="${itemId}"]`);
+                  if (cartItem) {
+                      cartItem.remove();
+                  }
+                  window.location.reload();
+              } else {
+                  alert('Error removing item from cart');
+              }
+          })
+          .catch(error => {
+              console.error('Error:', error);
+              alert('Error removing item from cart');
+          });
+      }
+  }
+  </script>
+
+  <script src="https://js.stripe.com/v3/"></script>
+  <script>
+    const stripe = Stripe('{{ stripe_publishable_key }}');
+    const checkoutButton = document.getElementById('checkout-button');
+
+    checkoutButton.addEventListener('click', function() {
+        // Disable the button to prevent multiple clicks
+        checkoutButton.disabled = true;
+        
+        // Create checkout session
+        fetch('{% url "create_checkout_session" %}')
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(session) {
+                if (session.error) {
+                    alert(session.error);
+                    checkoutButton.disabled = false;
+                    return;
+                }
+                // Redirect to Stripe Checkout
+                return stripe.redirectToCheckout({ sessionId: session.sessionId });
+            })
+            .then(function(result) {
+                if (result.error) {
+                    alert(result.error.message);
+                    checkoutButton.disabled = false;
+                }
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+                checkoutButton.disabled = false;
+            });
+    });
+  </script>
+</body>
+</html>
