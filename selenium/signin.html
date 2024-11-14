@@ -1,0 +1,186 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+   <head>
+      <meta charset="utf-8">
+      <title>Signup</title>
+      <link rel="stylesheet" href="{% static 'assets/css/style.css' %}">
+      <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+      <style>
+        body {
+            background: url("{% static 'assets/images/hero-bg.jpg' %}") no-repeat center center fixed;
+            background-size: cover;
+         }
+        .error {
+            color: red;
+            font-size: 0.8em;
+            margin-top: 5px;
+        }
+        .wrapper form .field {
+         height: 50px;
+         width: 100%;
+         margin-top: 20px;
+         position: relative;
+         padding-top: 10px;
+     }
+     .google-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 10px 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            color: #757575;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+
+        .google-btn:hover {
+            background-color: #f5f5f5;
+        }
+
+        .google-btn i {
+            font-size: 18px;
+        }
+
+        .wrapper {
+            background: rgba(255, 255, 255, 0.5); /* White with 80% opacity */
+            backdrop-filter: blur(10px); /* Adds a blur effect behind the wrapper */
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Make sure form elements remain readable */
+        .wrapper input[type="text"],
+        .wrapper input[type="email"],
+        .wrapper input[type="password"],
+        .wrapper input[type="tel"] {
+            color: black;
+        }
+      </style>
+   </head>
+   <body>
+      <div class="wrapper">
+         <div class="title">
+            Signup 
+         </div>
+         <form method="post" action="{% url 'signup' %}" id="signupForm">
+            {% csrf_token %}
+            <div class="field">
+               <input type="text" name="name" id="name" placeholder="Name" required>
+               <!-- <label>Name</label> -->
+               <p class="error" id="nameError"></p>
+            </div>
+            <div class="field">
+               <input type="email" name="email" id="email" placeholder="Email" required>
+               <!-- <label>Email Address</label> -->
+               <p class="error" id="emailError"></p>
+            </div>
+            <div class="field">
+               <input type="password" name="password" id="password" placeholder="Password" required>
+               <!-- <label>Password</label> -->
+               <p class="error" id="passwordError"></p>
+            </div>
+            <div class="field">
+               <input type="password" name="confirm_password" id="confirmPassword"  placeholder="Confirm Password"required>
+               <!-- <label>Confirm Password</label> -->
+               <p class="error" id="confirmPasswordError"></p>
+            </div>
+            <div class="field">
+               <input type="tel" name="phone" id="phone" placeholder="Phone Number" required>
+               <p class="error" id="phoneError"></p>
+            </div>
+            <div class="field">
+               <input type="text" name="address" id="address" placeholder="Address" required>
+               <p class="error" id="addressError"></p>
+            </div>
+            <div class="field">
+               <input type="submit" value="Signup">
+            </div>
+            <div class="signup-link">
+               <a href="{% url 'google_login' %}" class="google-btn">
+                   <i class="fab fa-google"></i> Continue with Google
+               </a>
+           </div>
+         </form>
+      </div>
+
+      <script>
+         document.getElementById('signupForm').addEventListener('submit', function(e) {
+            let isValid = true;
+            const name = document.getElementById('name');
+            const email = document.getElementById('email');
+            const password = document.getElementById('password');
+            const confirmPassword = document.getElementById('confirmPassword');
+            const phone = document.getElementById('phone');
+            const address = document.getElementById('address');
+
+            // Name validation
+            const nameRegex = /^[A-Za-z\s]+$/;
+            if (name.value.trim().length < 2 || !nameRegex.test(name.value)) {
+               document.getElementById('nameError').textContent = 'Name must be only letters and spaces';
+               isValid = false;
+            } else {
+               document.getElementById('nameError').textContent = '';
+            }
+
+            // Email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email.value)) {
+               document.getElementById('emailError').textContent = 'Please enter a valid email address';
+               isValid = false;
+            } else {
+               document.getElementById('emailError').textContent = '';
+            }
+
+            // Password validation
+            if (password.value.length < 8) {
+               document.getElementById('passwordError').textContent = 'Password must be at least 8 characters long';
+               isValid = false;
+            } else {
+               document.getElementById('passwordError').textContent = '';
+            }
+
+            // Confirm password validation
+            if (password.value !== confirmPassword.value) {
+               document.getElementById('confirmPasswordError').textContent = 'Passwords do not match';
+               isValid = false;
+            } else {
+               document.getElementById('confirmPasswordError').textContent = '';
+            }
+
+            // Phone validation
+            const phoneRegex = /^\+?[\d\s-]{10,}$/;
+            if (!phoneRegex.test(phone.value)) {
+               document.getElementById('phoneError').textContent = 'Please enter a valid phone number';
+               isValid = false;
+            } else {
+               document.getElementById('phoneError').textContent = '';
+            }
+
+            // Address validation
+            if (address.value.trim().length < 5) {
+               document.getElementById('addressError').textContent = 'Please enter a valid address';
+               isValid = false;
+            } else {
+               document.getElementById('addressError').textContent = '';
+            }
+
+            if (!isValid) {
+               e.preventDefault();
+            }
+         });
+      </script>
+      {% if error_message %}
+    <script>
+        Swal.fire({
+            icon: 'error',
+            title: 'Oops...',
+            text: '{{ error_message }}',
+        });
+    </script>
+    {% endif %}
+   </body>
+</html>

@@ -1,0 +1,94 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="utf-8">
+    <title>Login</title>
+    <link rel="stylesheet" href="{% static 'assets/css/style.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        body {
+            background: url("{% static 'assets/images/hero-bg.jpg' %}") no-repeat center center fixed;
+            background-size: cover;
+        }
+        .google-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 10px 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            color: #757575;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+
+        .google-btn:hover {
+            background-color: #f5f5f5;
+        }
+
+        .google-btn i {
+            font-size: 18px;
+        }
+
+        .wrapper {
+            background: rgba(255, 255, 255, 0.5); /* White background with 80% opacity */
+            backdrop-filter: blur(10px); /* Optional: adds a blur effect to the background */
+            border-radius: 15px; /* Optional: rounded corners */
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1); /* Optional: subtle shadow */
+        }
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="title">
+            Login
+        </div>
+        <form method="post" action="{% url 'login' %}">
+            {% csrf_token %}
+            <div class="field">
+                <input type="text" name="email" required>
+                <label>Email Address</label>
+            </div>
+            <div class="field">
+                <input type="password" name="password" required>
+                <label>Password</label>
+            </div>
+            <div class="content">
+                <div class="checkbox">
+                    <input type="checkbox" id="remember-me">
+                    <label for="remember-me">Remember me</label>
+                </div>
+                <div class="pass-link">
+                    <a href="{% url 'forgot_password' %}">Forgot password?</a>
+                </div>
+            </div>
+            <div class="field">
+                <input type="submit" value="Login">
+                
+            </div>
+            <div class="signup-link">
+                Not a member? <a href="{% url 'signup' %}">Signup now</a>
+            </div>
+            <div class="signup-link">
+                <a href="{% url 'google_login' %}" class="google-btn">
+                    <i class="fab fa-google"></i> Continue with Google
+                </a>
+            </div>
+        </form>
+    </div>
+    {% if error_message %}
+    <script>
+        Swal.fire({
+            icon: 'error',
+            title: 'Oops...',
+            text: '{{ error_message }}',
+        });
+    </script>
+    {% endif %}
+</body>
+</html>
