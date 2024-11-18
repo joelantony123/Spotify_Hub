@@ -12,8 +12,8 @@ class Customer(models.Model):
     name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
     password = models.CharField(max_length=128)
-    phone = models.CharField(max_length=15)
-    address = models.TextField()
+    phone = models.CharField(max_length=15,null=True)
+    address = models.TextField(null=True)
     reset_password_token = models.CharField(max_length=100, null=True, blank=True)
     reset_password_expires = models.DateTimeField(null=True, blank=True)
     user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES, default='customer')
@@ -69,7 +69,7 @@ class CartItem(models.Model):
         return self.quantity * self.product.price
 
 class Order(models.Model):
-    user = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='orders',null=True)
     order_date = models.DateTimeField(auto_now_add=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=[
@@ -77,9 +77,10 @@ class Order(models.Model):
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled')
     ], default='pending')
+    payment_id = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self):
-        return f"Order #{self.id} by {self.user.name}"
+        return f"Order #{self.id} by {self.customer.name}"
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE,null=True)

@@ -24,4 +24,6 @@ urlpatterns = [
     path('payment/cancelled/', views.payment_cancelled, name='payment_cancelled'),
     path('webhook/stripe/', views.stripe_webhook, name='stripe_webhook'),
     path('purchase-history/', views.purchase_history, name='purchase_history'),
+    path('download-invoice/<int:order_id>/', views.download_invoice, name='download_invoice'),
+    path('admin/orders/', views.admin_order_history, name='admin_order_history'),
 ]
