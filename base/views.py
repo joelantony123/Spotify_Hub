@@ -27,6 +27,13 @@ from django.http import JsonResponse
 from django.contrib import messages
 import stripe
 from django.urls import reverse
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+from io import BytesIO
+from django.http import FileResponse
+import os
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -763,10 +770,12 @@ def payment_success(request):
             customer = Customer.objects.get(customer_id=customer_id)
             cart = Cart.objects.get(user=customer)
             
-            # Create order
+            # Calculate total amount
             total_amount = sum(item.quantity * item.product.price for item in cart.items.all())
+            
+            # Create order with correct customer field
             order = Order.objects.create(
-                customer=customer,
+                customer=customer,  # Changed from user to customer
                 total_amount=total_amount,
                 status='completed',
                 payment_id=session.payment_intent
@@ -776,17 +785,16 @@ def payment_success(request):
             for cart_item in cart.items.all():
                 OrderItem.objects.create(
                     order=order,
-                    product=cart_item.product,
+                    product_name=cart_item.product.name,
                     quantity=cart_item.quantity,
-                    price=cart_item.product.price,
-                    product_name=cart_item.product.name
+                    price=cart_item.product.price
                 )
             
             # Clear cart
             cart.items.all().delete()
             
             messages.success(request, 'Payment successful! Your order has been placed.')
-        return render(request, 'payment_success.html')
+            return render(request, 'payment_success.html')
     except Exception as e:
         logger.error(f"Error processing successful payment: {str(e)}")
         messages.error(request, 'Error processing payment confirmation.')
@@ -828,7 +836,9 @@ def purchase_history(request):
     
     try:
         customer = Customer.objects.get(customer_id=customer_id)
-        orders = Order.objects.filter(user=customer).order_by('-order_date')
+        orders = Order.objects.filter(customer=customer).order_by('-order_date').prefetch_related('items')
+        
+        logger.info(f"Found {orders.count()} orders for customer {customer.name}")
         
         context = {
             'orders': orders,
@@ -836,4 +846,127 @@ def purchase_history(request):
         }
         return render(request, 'purchase_his.html', context)
     except Customer.DoesNotExist:
+        logger.error(f"Customer with ID {customer_id} not found")
         return redirect('login')
+    except Exception as e:
+        logger.error(f"Error in purchase history: {str(e)}")
+        messages.error(request, "Error retrieving purchase history")
+        return redirect('home')
+
+@never_cache
+def download_invoice(request, order_id):
+    try:
+        # Get the order and verify it belongs to the current customer
+        customer_id = request.session.get('customer_id')
+        order = Order.objects.get(id=order_id, customer__customer_id=customer_id)
+        
+        # Create a file-like buffer to receive PDF data
+        buffer = BytesIO()
+        
+        # Create the PDF object, using the buffer as its "file."
+        p = canvas.Canvas(buffer, pagesize=letter)
+        
+        # Draw things on the PDF
+        # Header
+        p.setFont("Helvetica-Bold", 24)
+        p.drawString(50, 750, "Invoice")
+        
+        # Company info
+        p.setFont("Helvetica", 12)
+        p.drawString(50, 720, "Sports Hub")
+        p.drawString(50, 705, "123 Sports Street")
+        p.drawString(50, 690, "Phone: (123) 456-7890")
+        
+        # Customer info
+        p.drawString(50, 650, f"Bill To:")
+        p.drawString(50, 635, f"Name: {order.customer.name}")
+        p.drawString(50, 620, f"Email: {order.customer.email}")
+        p.drawString(50, 605, f"Address: {order.customer.address}")
+        
+        # Order info
+        p.drawString(50, 575, f"Order ID: #{order.id}")
+        p.drawString(50, 560, f"Order Date: {order.order_date.strftime('%B %d, %Y')}")
+        p.drawString(50, 545, f"Payment ID: {order.payment_id}")
+        
+        # Table header
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(50, 500, "Item")
+        p.drawString(300, 500, "Quantity")
+        p.drawString(400, 500, "Price")
+        p.drawString(500, 500, "Total")
+        
+        # Table content
+        y = 480
+        p.setFont("Helvetica", 12)
+        for item in order.items.all():
+            p.drawString(50, y, item.product_name)
+            p.drawString(300, y, str(item.quantity))
+            p.drawString(400, y, f"Rs.{item.price}")
+            item_total = item.price * Decimal(str(item.quantity))
+            p.drawString(500, y, f"Rs.{item_total}")
+            y -= 20
+        
+        # Calculate totals using Decimal
+        subtotal = order.total_amount
+        tax_rate = Decimal('0.10')
+        tax_amount = subtotal * tax_rate
+        total = subtotal + tax_amount
+        
+        # Draw totals
+        p.line(50, y-10, 550, y-10)
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(400, y-30, "Subtotal:")
+        p.drawString(500, y-30, f"Rs.{subtotal:.2f}")
+        p.drawString(400, y-50, "Tax (10%):")
+        p.drawString(500, y-50, f"Rs.{tax_amount:.2f}")
+        p.drawString(400, y-70, "Total:")
+        p.drawString(500, y-70, f"Rs.{total:.2f}")
+        
+        # Footer
+        p.setFont("Helvetica", 10)
+        p.drawString(50, 50, "Thank you for your purchase!")
+        
+        # Close the PDF object cleanly
+        p.showPage()
+        p.save()
+        
+        # FileResponse sets the Content-Disposition header so that browsers
+        # present the option to save the file.
+        buffer.seek(0)
+        return FileResponse(buffer, as_attachment=True, filename=f'invoice_{order.id}.pdf')
+    
+    except Order.DoesNotExist:
+        messages.error(request, "Order not found or unauthorized access")
+        return redirect('purchase_history')
+    except Exception as e:
+        logger.error(f"Error generating invoice: {str(e)}")
+        messages.error(request, "Error generating invoice")
+        return redirect('purchase_history')
+
+@never_cache
+def admin_order_history(request):
+    # Check if user is admin
+    customer_id = request.session.get('customer_id')
+    try:
+        admin_user = Customer.objects.get(customer_id=customer_id)
+        if admin_user.user_type != 'admin':
+            messages.error(request, 'Unauthorized access.')
+            return redirect('login')
+    except Customer.DoesNotExist:
+        return redirect('login')
+
+    # Get all orders with related customer information
+    orders = Order.objects.select_related('customer').prefetch_related('items').order_by('-order_date')
+
+    # Group orders by date for better organization
+    orders_by_date = {}
+    for order in orders:
+        date = order.order_date.date()
+        if date not in orders_by_date:
+            orders_by_date[date] = []
+        orders_by_date[date].append(order)
+
+    context = {
+        'orders_by_date': orders_by_date,
+    }
+    return render(request, 'admin_order_history.html', context)
