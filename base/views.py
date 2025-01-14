@@ -608,26 +608,24 @@ def delete_product(request, product_id):
     return redirect('admin_dashboard')
 
 def edit_product(request, product_id):
-    try:
-        product = Product.objects.get(id=product_id)
-        if request.method == 'POST':
-            product.name = request.POST.get('product_name')
-            product.description = request.POST.get('product_description')
-            product.price = request.POST.get('product_price')
-            product.category = request.POST.get('product_category')
-            product.stock = request.POST.get('product_stock')
+    product = get_object_or_404(Product, id=product_id)
+    
+    if request.method == 'POST':
+        # Handle form submission
+        product.name = request.POST.get('product_name')
+        product.description = request.POST.get('product_description')
+        product.price = request.POST.get('product_price')
+        product.category = request.POST.get('product_category')
+        product.stock = request.POST.get('product_stock')
+        
+        if 'product_image' in request.FILES:
+            product.image = request.FILES['product_image']
             
-            if 'product_image' in request.FILES:
-                product.image = request.FILES['product_image']
-            
-            product.save()
-            messages.success(request, f'Product "{product.name}" has been updated successfully.')
-            return redirect('admin_dashboard')
-            
-        return render(request, 'edit_product.html', {'product': product})
-    except Product.DoesNotExist:
-        messages.error(request, 'Product not found.')
+        product.save()
+        messages.success(request, 'Product updated successfully!')
         return redirect('admin_dashboard')
+        
+    return render(request, 'edit_product.html', {'product': product})
 
 @csrf_protect
 @require_POST
