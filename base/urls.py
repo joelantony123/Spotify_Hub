@@ -26,4 +26,8 @@ urlpatterns = [
     path('purchase-history/', views.purchase_history, name='purchase_history'),
     path('download-invoice/<int:order_id>/', views.download_invoice, name='download_invoice'),
     path('admin/orders/', views.admin_order_history, name='admin_order_history'),
+    path('product/<int:product_id>/', views.product_detail, name='product_detail'),
+    path('add-review/<int:product_id>/', views.add_review, name='add_review'),
+    path('chat/', views.chat_view, name='chat'),
+    path('chat/messages/<int:user_id>/', views.get_new_messages, name='get_new_messages'),
 ]

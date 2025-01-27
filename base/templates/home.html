@@ -557,6 +557,14 @@
                             <li class="nav-item">
                                 <a class="nav-link" href="#contact">Contact</a>
                             </li>
+                            <li class="nav-item">
+                                <a href="{% url 'chat' %}" class="nav-link">
+                                    <i class="fas fa-comments"></i> Chat with Admin
+                                    {% if total_unread > 0 %}
+                                        <span class="badge bg-danger rounded-pill">{{ total_unread }}</span>
+                                    {% endif %}
+                                </a>
+                            </li>
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button"
                                     data-bs-toggle="dropdown" aria-expanded="false">
@@ -804,7 +812,11 @@
                                 {% endif %}
                             </div>
                             <div class="detail-box">
-                                <h5>{{ product.name }}</h5>
+                                <h5>
+                                    <a href="{% url 'product_detail' product.id %}" class="text-dark text-decoration-none">
+                                        {{ product.name }}
+                                    </a>
+                                </h5>
                                 <p style="color: #000;">{{ product.description }}</p>
                                 <div class="options">
                                     <h6>₹{{ product.price }}</h6>
