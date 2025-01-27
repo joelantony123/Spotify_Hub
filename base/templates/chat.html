@@ -1,0 +1,181 @@
+{% load static %}
+{% load chat_filters %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .chat-container {
+            height: 70vh;
+            overflow-y: auto;
+        }
+        .message {
+            margin: 10px;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 70%;
+        }
+        .sent {
+            background-color: #007bff;
+            color: white;
+            margin-left: auto;
+        }
+        .received {
+            background-color: #e9ecef;
+            margin-right: auto;
+        }
+        .timestamp {
+            font-size: 0.8em;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="{% if current_customer.user_type == 'admin' %}{% url 'admin_dashboard' %}{% else %}{% url 'home' %}{% endif %}">
+                {% if current_customer.user_type == 'admin' %}
+                    <i class="fas fa-arrow-left"></i> Back to Admin Dashboard
+                {% else %}
+                    <i class="fas fa-arrow-left"></i> Back to Home
+                {% endif %}
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'logout' %}">
+                            <i class="fas fa-sign-out-alt"></i> Logout
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <!-- Chat list -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Conversations</h5>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        {% for user in chat_users %}
+                        <a href="{% url 'chat' %}?user={{ user.customer_id }}" 
+                           class="list-group-item list-group-item-action {% if current_chat_user.customer_id == user.customer_id %}active{% endif %}">
+                            <i class="fas fa-user"></i> {{ user.name }}
+                            {% if unread_counts|get_item:user.customer_id > 0 %}
+                            <span class="badge bg-danger float-end">{{ unread_counts|get_item:user.customer_id }}</span>
+                            {% endif %}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Chat messages -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            {% if current_chat_user %}
+                                Chat with {{ current_chat_user.name }}
+                            {% else %}
+                                Select a user to start chatting
+                            {% endif %}
+                        </h5>
+                    </div>
+                    <div class="card-body chat-container" id="chatContainer">
+                        {% for message in messages %}
+                        <div class="message {% if message.sender.customer_id == current_customer.customer_id %}sent{% else %}received{% endif %}">
+                            {{ message.message }}
+                            <div class="timestamp">{{ message.timestamp|date:"M d, Y H:i" }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% if current_chat_user %}
+                    <div class="card-footer">
+                        <form id="messageForm" method="post">
+                            {% csrf_token %}
+                            <div class="input-group">
+                                <input type="text" class="form-control" name="message" placeholder="Type your message..." required>
+                                <button class="btn btn-primary" type="submit">Send</button>
+                            </div>
+                        </form>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Auto-scroll to bottom of chat
+        function scrollToBottom() {
+            const chatContainer = document.getElementById('chatContainer');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Call on page load
+        scrollToBottom();
+
+        // Handle form submission with AJAX
+        $('#messageForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            $.ajax({
+                type: 'POST',
+                url: window.location.href,
+                data: $(this).serialize(),
+                success: function(response) {
+                    if (response.status === 'success') {
+                        // Add new message to chat
+                        const messageHtml = `
+                            <div class="message sent">
+                                ${response.message}
+                                <div class="timestamp">${response.timestamp}</div>
+                            </div>
+                        `;
+                        $('#chatContainer').append(messageHtml);
+                        
+                        // Clear input and scroll to bottom
+                        $('input[name="message"]').val('');
+                        scrollToBottom();
+                    }
+                }
+            });
+        });
+
+        // Poll for new messages every 5 seconds
+        setInterval(function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const userId = urlParams.get('user');
+            if (userId) {
+                $.get(`/chat/messages/${userId}/`, function(response) {
+                    if (response.messages.length > 0) {
+                        response.messages.forEach(function(msg) {
+                            const messageHtml = `
+                                <div class="message ${msg.is_sender ? 'sent' : 'received'}">
+                                    ${msg.message}
+                                    <div class="timestamp">${msg.timestamp}</div>
+                                </div>
+                            `;
+                            $('#chatContainer').append(messageHtml);
+                        });
+                        scrollToBottom();
+                    }
+                });
+            }
+        }, 5000);
+    </script>
+</body>
+</html> 

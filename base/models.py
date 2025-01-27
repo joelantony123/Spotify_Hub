@@ -83,14 +83,51 @@ class Order(models.Model):
         return f"Order #{self.id} by {self.customer.name}"
 
 class OrderItem(models.Model):
-    order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE,null=True)
-    product_name = models.CharField(max_length=200,null=True)
-    quantity = models.IntegerField(null=True)
-    price = models.DecimalField(max_digits=10, decimal_places=2,null=True)
+    order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE, null=True, default=None)
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
+    product_name = models.CharField(max_length=200, default='')
+    quantity = models.PositiveIntegerField(default=1)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+
+    @property
+    def has_review(self):
+        if not self.product:
+            return False
+        return Review.objects.filter(
+            product=self.product,
+            customer=self.order.customer
+        ).exists()
 
     def __str__(self):
         return f"{self.quantity}x {self.product_name}"
 
+class Review(models.Model):
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews', null=True)
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
+    rating = models.IntegerField(choices=[(i, i) for i in range(1, 6)])  # 1-5 rating
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    purchase_verified = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Review by {self.customer.name} for {self.product.name}"
+
+class ChatMessage(models.Model):
+    sender = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='sent_messages')
+    receiver = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='received_messages')
+    message = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['timestamp']
+
+    def __str__(self):
+        return f'From {self.sender.name} to {self.receiver.name} at {self.timestamp}'
 
 
-        
+
+

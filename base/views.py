@@ -11,6 +11,7 @@ from django.contrib.auth.decorators import user_passes_test
 from decimal import Decimal
 import logging
 from django.core.mail import send_mail
+from django.db.models import Avg
 from django.contrib import messages 
 from django.shortcuts import render, redirect
 from django.utils.crypto import get_random_string
@@ -34,8 +35,13 @@ from reportlab.lib.units import inch
 from io import BytesIO
 from django.http import FileResponse
 import os
+from .models import Review
+from django.template.loader import get_template
+from django.template.exceptions import TemplateDoesNotExist
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
+
+logger = logging.getLogger(__name__)
 
 @never_cache
 def login_view(request):
@@ -761,7 +767,7 @@ def create_checkout_session(request):
 def payment_success(request):
     try:
         session_id = request.GET.get('session_id')
-        if session_id:
+        if (session_id):
             session = stripe.checkout.Session.retrieve(session_id)
             customer_id = session.metadata.get('customer_id')
             
@@ -783,6 +789,7 @@ def payment_success(request):
             for cart_item in cart.items.all():
                 OrderItem.objects.create(
                     order=order,
+                    product=cart_item.product,  # Add this line
                     product_name=cart_item.product.name,
                     quantity=cart_item.quantity,
                     price=cart_item.product.price
@@ -828,23 +835,62 @@ def stripe_webhook(request):
 
 @never_cache
 def purchase_history(request):
+    logger.info("Accessing purchase history view")
     customer_id = request.session.get('customer_id')
+    
     if not customer_id:
+        logger.warning("No customer_id in session")
+        messages.error(request, 'Please login to view purchase history')
         return redirect('login')
     
     try:
         customer = Customer.objects.get(customer_id=customer_id)
-        orders = Order.objects.filter(customer=customer).order_by('-order_date').prefetch_related('items')
+        orders = Order.objects.filter(customer=customer)\
+            .order_by('-order_date')\
+            .prefetch_related('items', 'items__product')
         
         logger.info(f"Found {orders.count()} orders for customer {customer.name}")
         
+        # Process orders and items
+        processed_orders = []
+        for order in orders:
+            processed_items = []
+            for item in order.items.all():
+                # Create a dictionary with item data including review status
+                item_data = {
+                    'id': item.id,
+                    'product': item.product,
+                    'product_name': item.product_name,
+                    'quantity': item.quantity,
+                    'price': item.price,
+                    'product_exists': bool(item.product),
+                    'has_review': False
+                }
+                
+                # Check for review if product exists
+                if item.product:
+                    item_data['has_review'] = Review.objects.filter(
+                        product=item.product,
+                        customer=customer
+                    ).exists()
+                
+                processed_items.append(item_data)
+            
+            # Add processed items to order
+            order.processed_items = processed_items
+            processed_orders.append(order)
+        
         context = {
-            'orders': orders,
-            'customer': customer
+            'orders': processed_orders,
+            'customer': customer,
+            'page_title': 'Purchase History'
         }
+        
         return render(request, 'purchase_his.html', context)
+                
     except Customer.DoesNotExist:
         logger.error(f"Customer with ID {customer_id} not found")
+        messages.error(request, 'Customer account not found')
         return redirect('login')
     except Exception as e:
         logger.error(f"Error in purchase history: {str(e)}")
@@ -968,3 +1014,244 @@ def admin_order_history(request):
         'orders_by_date': orders_by_date,
     }
     return render(request, 'admin_order_history.html', context)
+
+@never_cache
+def product_detail(request, product_id):
+    # Added by Copilot: Product detail view with reviews
+    try:
+        product = Product.objects.get(id=product_id)
+        reviews = product.reviews.select_related('customer').all()
+        
+        # Check if the user has purchased this product
+        customer_id = request.session.get('customer_id')
+        has_purchased = False
+        can_review = False
+        
+        if customer_id:
+            customer = Customer.objects.get(customer_id=customer_id)
+            # Check if user has purchased this product
+            has_purchased = OrderItem.objects.filter(
+                order__customer=customer,
+                product_name=product.name,
+                order__status='completed'
+            ).exists()
+            
+            # Check if user hasn't already reviewed
+            has_reviewed = Review.objects.filter(
+                product=product,
+                customer=customer
+            ).exists()
+            
+            can_review = has_purchased and not has_reviewed
+
+        # Calculate average rating
+        avg_rating = reviews.aggregate(Avg('rating'))['rating__avg'] or 0
+        
+        context = {
+            'product': product,
+            'reviews': reviews,
+            'can_review': can_review,
+            'average_rating': round(avg_rating, 1),
+            'has_purchased': has_purchased
+        }
+        return render(request, 'product_detail.html', context)
+    except Product.DoesNotExist:
+        messages.error(request, 'Product not found')
+        return redirect('home')
+
+@never_cache
+@require_POST
+def add_review(request, product_id):
+    if not request.session.get('customer_id'):
+        messages.error(request, 'Please login to add a review')
+        return redirect('purchase_history')
+    
+    try:
+        product = Product.objects.get(id=product_id)
+        customer = Customer.objects.get(customer_id=request.session['customer_id'])
+        
+        # Verify purchase
+        has_purchased = OrderItem.objects.filter(
+            order__customer=customer,
+            product=product,
+            order__status='completed'
+        ).exists()
+        
+        if not has_purchased:
+            messages.error(request, 'You must purchase this product to review it')
+            return redirect('purchase_history')
+        
+        # Check if already reviewed
+        if Review.objects.filter(product=product, customer=customer).exists():
+            messages.error(request, 'You have already reviewed this product')
+            return redirect('purchase_history')
+        
+        # Get form data
+        rating = request.POST.get('rating')
+        comment = request.POST.get('comment', '').strip()
+        
+        # Validate input
+        if not rating or not comment:
+            messages.error(request, 'Please provide both rating and comment')
+            return redirect('purchase_history')
+        
+        try:
+            rating = int(rating)
+            if not (1 <= rating <= 5):
+                raise ValueError('Invalid rating range')
+        except ValueError:
+            messages.error(request, 'Please provide a valid rating between 1 and 5')
+            return redirect('purchase_history')
+        
+        # Create review
+        Review.objects.create(
+            product=product,
+            customer=customer,
+            rating=rating,
+            comment=comment,
+            purchase_verified=True
+        )
+        
+        messages.success(request, 'Thank you for your review!')
+        return redirect('purchase_history')
+        
+    except Product.DoesNotExist:
+        messages.error(request, 'Product not found')
+        return redirect('purchase_history')
+    except Customer.DoesNotExist:
+        messages.error(request, 'Please login to add a review')
+        return redirect('login')
+    except Exception as e:
+        logger.error(f"Error adding review: {str(e)}")
+        messages.error(request, 'An error occurred while adding your review')
+        return redirect('purchase_history')
+    
+from django.http import JsonResponse
+from django.db.models import Q
+from .models import ChatMessage, Customer
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+
+@never_cache
+def chat_view(request):
+    customer_id = request.session.get('customer_id')
+    if not customer_id:
+        messages.error(request, 'Please login to access chat')
+        return redirect('login')
+    
+    try:
+        current_customer = Customer.objects.get(customer_id=customer_id)
+        
+        # Get all users who have chatted with the current customer
+        chat_users = Customer.objects.filter(
+            Q(customer_id__in=ChatMessage.objects.filter(receiver=current_customer).values('sender__customer_id')) |
+            Q(customer_id__in=ChatMessage.objects.filter(sender=current_customer).values('receiver__customer_id'))
+        ).distinct()
+
+        # If this is an admin, show all customers
+        if current_customer.user_type == 'admin':
+            customers = Customer.objects.filter(user_type='customer', is_active=True)
+            chat_users = chat_users.union(customers)
+        else:
+            # If this is a customer, make sure they can chat with admin
+            admins = Customer.objects.filter(user_type='admin', is_active=True)
+            chat_users = chat_users.union(admins)
+
+        # Get current chat user from query params
+        current_chat_user_id = request.GET.get('user')
+        current_chat_user = None
+        messages_list = []
+        
+        if current_chat_user_id:
+            try:
+                current_chat_user = Customer.objects.get(customer_id=current_chat_user_id)
+                messages_list = ChatMessage.objects.filter(
+                    (Q(sender=current_customer) & Q(receiver=current_chat_user)) |
+                    (Q(sender=current_chat_user) & Q(receiver=current_customer))
+                ).order_by('timestamp')
+                
+                # Mark messages as read
+                messages_list.filter(receiver=current_customer, is_read=False).update(is_read=True)
+            except Customer.DoesNotExist:
+                pass
+
+        # Handle new message submission
+        if request.method == 'POST' and current_chat_user:
+            message_text = request.POST.get('message')
+            if message_text:
+                message = ChatMessage.objects.create(
+                    sender=current_customer,
+                    receiver=current_chat_user,
+                    message=message_text
+                )
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'status': 'success',
+                        'message': message_text,
+                        'timestamp': message.timestamp.strftime("%b %d, %Y %H:%M")
+                    })
+
+        # Get unread message counts
+        unread_counts = {}
+        for user in chat_users:
+            unread_counts[user.customer_id] = ChatMessage.objects.filter(
+                sender=user,
+                receiver=current_customer,
+                is_read=False
+            ).count()
+
+        # Calculate total unread messages for navbar badge
+        total_unread = sum(unread_counts.values())
+
+        context = {
+            'chat_users': chat_users,
+            'current_chat_user': current_chat_user,
+            'messages': messages_list,
+            'unread_counts': unread_counts,
+            'total_unread': total_unread,
+            'current_customer': current_customer,  # Add this for the template
+        }
+        
+        logger.info(f"Chat view loaded for customer {current_customer.name}")
+        logger.info(f"Number of chat users: {chat_users.count()}")
+        
+        return render(request, 'chat.html', context)
+                
+    except Customer.DoesNotExist:
+        messages.error(request, 'Customer account not found')
+        return redirect('login')
+    except Exception as e:
+        logger.error(f"Error in chat view: {str(e)}")
+        messages.error(request, "Error accessing chat")
+        return redirect('home')
+
+@never_cache
+def get_new_messages(request, user_id):
+    customer_id = request.session.get('customer_id')
+    if not customer_id:
+        return JsonResponse({'messages': []})
+    
+    try:
+        current_customer = Customer.objects.get(customer_id=customer_id)
+        other_user = Customer.objects.get(customer_id=user_id)
+        
+        # Get unread messages from the other user
+        new_messages = ChatMessage.objects.filter(
+            sender=other_user,
+            receiver=current_customer,
+            is_read=False
+        ).order_by('timestamp')
+        
+        # Mark messages as read
+        new_messages.update(is_read=True)
+        
+        # Format messages for JSON response
+        messages_data = [{
+            'message': msg.message,
+            'timestamp': msg.timestamp.strftime("%b %d, %Y %H:%M"),
+            'is_sender': False
+        } for msg in new_messages]
+        
+        return JsonResponse({'messages': messages_data})
+    except Customer.DoesNotExist:
+        return JsonResponse({'messages': []})
