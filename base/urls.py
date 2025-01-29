@@ -30,4 +30,6 @@ urlpatterns = [
     path('add-review/<int:product_id>/', views.add_review, name='add_review'),
     path('chat/', views.chat_view, name='chat'),
     path('chat/messages/<int:user_id>/', views.get_new_messages, name='get_new_messages'),
+    path('get_chat_messages/', views.get_chat_messages, name='get_chat_messages'),
+    path('send_chat_message/', views.send_chat_message, name='send_chat_message'),
 ]
