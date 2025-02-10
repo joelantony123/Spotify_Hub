@@ -31,6 +31,20 @@
             font-size: 0.8em;
             color: #6c757d;
         }
+        .chat-input {
+            padding: 15px;
+            border-top: 1px solid #eee;
+        }
+        .chat-input form {
+            display: flex;
+            gap: 10px;
+        }
+        .chat-input input {
+            flex-grow: 1;
+        }
+        .chat-input button {
+            min-width: 80px;
+        }
     </style>
 </head>
 <body>
@@ -70,10 +84,12 @@
                     <div class="list-group list-group-flush">
                         {% for user in chat_users %}
                         <a href="{% url 'chat' %}?user={{ user.customer_id }}" 
-                           class="list-group-item list-group-item-action {% if current_chat_user.customer_id == user.customer_id %}active{% endif %}">
-                            <i class="fas fa-user"></i> {{ user.name }}
+                           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center {% if current_chat_user.customer_id == user.customer_id %}active{% endif %}">
+                            <div>
+                                <i class="fas fa-user"></i> {{ user.name }}
+                            </div>
                             {% if unread_counts|get_item:user.customer_id > 0 %}
-                            <span class="badge bg-danger float-end">{{ unread_counts|get_item:user.customer_id }}</span>
+                            <span class="badge bg-danger rounded-pill">{{ unread_counts|get_item:user.customer_id }}</span>
                             {% endif %}
                         </a>
                         {% endfor %}
@@ -101,17 +117,14 @@
                         </div>
                         {% endfor %}
                     </div>
-                    {% if current_chat_user %}
-                    <div class="card-footer">
-                        <form id="messageForm" method="post">
+                    <!-- Chat input form -->
+                    <div class="chat-input">
+                        <form id="messageForm" class="d-flex">
                             {% csrf_token %}
-                            <div class="input-group">
-                                <input type="text" class="form-control" name="message" placeholder="Type your message..." required>
-                                <button class="btn btn-primary" type="submit">Send</button>
-                            </div>
+                            <input type="text" class="form-control" name="message" id="messageInput" placeholder="Type your message..." required>
+                            <button type="submit" class="btn btn-primary ms-2">Send</button>
                         </form>
                     </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -119,40 +132,62 @@
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        // Auto-scroll to bottom of chat
+        // Handle form submission with AJAX
+        $(document).ready(function() {
+            $('#messageForm').on('submit', function(e) {
+                e.preventDefault();
+                
+                const input = $('#messageInput');
+                const message = input.val().trim();
+                
+                if (!message) return;
+                
+                $.ajax({
+                    type: 'POST',
+                    url: '{% url "send_chat_message" %}',
+                    data: {
+                        message: message,
+                        receiver_id: '{{ current_chat_user.customer_id }}',
+                        csrfmiddlewaretoken: '{{ csrf_token }}'
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            // Add new message to chat
+                            const messageHtml = `
+                                <div class="message sent">
+                                    ${message}
+                                    <div class="timestamp">${response.timestamp}</div>
+                                </div>
+                            `;
+                            $('#chatContainer').append(messageHtml);
+                            
+                            // Clear input and scroll to bottom
+                            input.val('');
+                            const chatContainer = document.getElementById('chatContainer');
+                            chatContainer.scrollTop = chatContainer.scrollHeight;
+                        } else {
+                            alert(response.message || 'Failed to send message');
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error sending message:', error);
+                        alert('Failed to send message. Please try again.');
+                    }
+                });
+            });
+        });
+
+        // Make sure chat scrolls to bottom on load
         function scrollToBottom() {
             const chatContainer = document.getElementById('chatContainer');
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            if (chatContainer) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
         }
 
         // Call on page load
-        scrollToBottom();
-
-        // Handle form submission with AJAX
-        $('#messageForm').on('submit', function(e) {
-            e.preventDefault();
-            
-            $.ajax({
-                type: 'POST',
-                url: window.location.href,
-                data: $(this).serialize(),
-                success: function(response) {
-                    if (response.status === 'success') {
-                        // Add new message to chat
-                        const messageHtml = `
-                            <div class="message sent">
-                                ${response.message}
-                                <div class="timestamp">${response.timestamp}</div>
-                            </div>
-                        `;
-                        $('#chatContainer').append(messageHtml);
-                        
-                        // Clear input and scroll to bottom
-                        $('input[name="message"]').val('');
-                        scrollToBottom();
-                    }
-                }
-            });
+        $(document).ready(function() {
+            scrollToBottom();
         });
 
         // Poll for new messages every 5 seconds
@@ -176,6 +211,41 @@
                 });
             }
         }, 5000);
+
+        function updateUnreadCounts(counts) {
+            for (const [userId, count] of Object.entries(counts)) {
+                const userItem = document.querySelector(`a[href*="user=${userId}"]`);
+                if (userItem) {
+                    let badge = userItem.querySelector('.badge');
+                    if (count > 0) {
+                        if (!badge) {
+                            badge = document.createElement('span');
+                            badge.className = 'badge bg-danger rounded-pill';
+                            userItem.appendChild(badge);
+                        }
+                        badge.textContent = count;
+                    } else if (badge) {
+                        badge.remove();
+                    }
+                }
+            }
+        }
+
+        function loadMessages() {
+            {% if current_chat_user %}
+            $.get('{% url "get_new_messages" user_id=current_chat_user.customer_id %}', function(response) {
+                // Update messages
+                if (response.messages && response.messages.length > 0) {
+                    // ... existing message update code ...
+                }
+                
+                // Update unread counts
+                if (response.unread_counts) {
+                    updateUnreadCounts(response.unread_counts);
+                }
+            });
+            {% endif %}
+        }
     </script>
 </body>
 </html> 

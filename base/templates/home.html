@@ -530,21 +530,24 @@
         }
 
         .chat-button {
-            width: 60px;
-            height: 60px;
+            width: 50px;
+            height: 50px;
             border-radius: 50%;
-            background-color: #007bff;
-            color: white;
             border: none;
+            margin: 5px;
             cursor: pointer;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
             position: relative;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
-        .chat-button .badge {
-            position: absolute;
-            top: -5px;
-            right: -5px;
+        .chat-button.ai-chat {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .chat-button.admin-chat {
+            background-color: #28a745;
+            color: white;
         }
 
         .chat-window {
@@ -558,11 +561,12 @@
             border-radius: 10px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.2);
             flex-direction: column;
+            overflow: hidden;
         }
 
         .chat-header {
             padding: 15px;
-            background: #007bff;
+            background: #4285f4;
             color: white;
             border-radius: 10px 10px 0 0;
             display: flex;
@@ -570,46 +574,257 @@
             align-items: center;
         }
 
-        .chat-header h5 {
-            margin: 0;
-        }
-
-        .close-button {
-            background: none;
-            border: none;
-            color: white;
-            cursor: pointer;
-        }
-
         .chat-messages {
-            flex-grow: 1;
-            padding: 15px;
+            flex: 1;
             overflow-y: auto;
-            height: calc(100% - 120px);
+            padding: 15px;
+        }
+
+        .message {
+            margin: 10px;
+            padding: 10px 15px;
+            border-radius: 15px;
+            max-width: 80%;
+            word-wrap: break-word;
+            position: relative;
+        }
+
+        .message .timestamp {
+            font-size: 0.7em;
+            color: #666;
+            margin-top: 4px;
+            text-align: right;
+            opacity: 0.8;
+        }
+
+        .message.sent {
+            background-color: #e3f2fd;
+            margin-left: auto;
+        }
+
+        .message.received {
+            background-color: #f5f5f5;
+            margin-right: auto;
+        }
+
+        .message.error {
+            background-color: #ffe6e6;
+            color: #dc3545;
         }
 
         .chat-input {
             padding: 15px;
-            border-top: 1px solid #dee2e6;
+            border-top: 1px solid #eee;
         }
 
-        .message {
-            margin-bottom: 10px;
-            max-width: 80%;
-            padding: 10px;
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            min-width: 20px;
+            height: 20px;
             border-radius: 10px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .search-container {
             position: relative;
+            z-index: 1;
+        }
+
+        .search-container input {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            transition: all 0.3s ease;
+        }
+
+        .search-container input:focus {
+            box-shadow: 0 0 15px rgba(255, 190, 51, 0.2);
+            border-color: #ffbe33;
+        }
+
+        .search-container button {
+            padding: 10px 20px;
+            transition: all 0.3s ease;
+        }
+
+        .search-container button:hover {
+            background-color: #e69c00 !important;
+            border-color: #e69c00 !important;
+        }
+
+        @media (max-width: 768px) {
+            .search-container {
+                padding: 0 15px;
+            }
+            
+            .search-container input {
+                font-size: 14px;
+            }
+        }
+
+        .product-item {
+            margin-bottom: 30px;
+        }
+
+        .box {
+            background-color: #ffffff;
+            border-radius: 15px;
+            overflow: hidden;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .box:hover {
+            transform: translateY(-5px);
+        }
+
+        .img-box {
+            padding: 20px;
+            height: 220px;
+            overflow: hidden;
+        }
+
+        .img-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            transition: transform 0.3s ease;
+        }
+
+        .box:hover .img-box img {
+            transform: scale(1.1);
+        }
+
+        .detail-box {
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-box h5 {
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+            color: #222831;
+        }
+
+        .detail-box p {
+            flex: 1;
+            color: #666666;
+            margin-bottom: 15px;
+        }
+
+        .options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            margin-top: auto;
+        }
+
+        .options h6 {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+
+        .product-container.loading {
+            opacity: 0.6;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .filters_menu li {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filters_menu li.active {
+            background-color: #ffbe33;
+            color: #ffffff;
+        }
+
+        .product-item {
+            transition: all 0.3s ease;
+        }
+
+        .typing-indicator {
+            background-color: #f1f0f0 !important;
+            padding: 15px !important;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dots span {
+            width: 8px;
+            height: 8px;
+            background: #666;
+            border-radius: 50%;
+            animation: typing 1s infinite ease-in-out;
+        }
+
+        .typing-dots span:nth-child(1) { animation-delay: 0.1s; }
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+
+        @keyframes typing {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        #aiChatWindow {
+            display: none;
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            width: 350px;
+            height: 500px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            flex-direction: column;
+        }
+
+        #aiChatWindow.active {
+            display: flex;
+        }
+
+        .message.error {
+            background-color: #ffe6e6;
+            color: #dc3545;
         }
 
         .message.sent {
             background-color: #007bff;
             color: white;
             margin-left: auto;
+            border-radius: 15px 15px 0 15px;
         }
 
         .message.received {
-            background-color: #f1f1f1;
+            background-color: #f1f0f0;
+            color: #333;
             margin-right: auto;
+            border-radius: 15px 15px 15px 0;
         }
 
         .message .timestamp {
@@ -618,8 +833,106 @@
             margin-top: 5px;
         }
 
-        .chat-window.active {
+        #aiChatWindow .chat-input {
+            padding: 10px;
+            border-top: 1px solid #eee;
+        }
+
+        #aiChatWindow .input-group {
+            margin-bottom: 0;
+        }
+
+        #aiMessageInput {
+            border-radius: 20px 0 0 20px;
+            padding: 10px 15px;
+        }
+
+        #aiChatWindow .btn-primary {
+            border-radius: 0 20px 20px 0;
+            padding: 0 15px;
+        }
+
+        .chat-messages {
+            padding: 15px;
+            overflow-y: auto;
+            flex-grow: 1;
             display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .profile-card {
+            background: #fff;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 3px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 300px;
+            margin: 10px auto;
+        }
+
+        .profile-card .profile-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .profile-card .profile-avatar {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: #ffc107;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .profile-card .profile-avatar i {
+            font-size: 20px;
+            color: white;
+        }
+
+        .profile-card .profile-info {
+            flex: 1;
+        }
+
+        .profile-card .profile-name {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+            margin: 0;
+        }
+
+        .profile-card .profile-detail {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            color: #555;
+            font-size: 0.95em;
+            word-break: break-word;
+        }
+
+        .profile-card .profile-detail i {
+            width: 20px;
+            margin-right: 12px;
+            color: #2196F3;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        .profile-card .profile-detail:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Adjust the message container for profile card */
+        .message.received .profile-card {
+            background: #fff;
+            margin: 0;
+            color: #333;
         }
     </style>
 </head>
@@ -721,13 +1034,13 @@
                                     </g>
                                 </svg>
                             </a>
-                            <!-- <form class="form-inline">
+                            <form class="form-inline">
                   {% csrf_token %}
                   <button class="btn my-2 my-sm-0 nav_search-btn" type="submit">
-                    <i class="fa fa-search" aria-hidden="true"></i>
+ 
                   </button>
-                </form> -->
-                            <a href="#" class="order_online"> Search</a>
+                </form>
+                           
                         </div>
                     </div>
                 </nav>
@@ -790,9 +1103,9 @@
                                             game.
                                             Shop now for unbeatable prices and performance!
                                         </p>
-                                        <div class="btn-box">
+                                        <!-- <div class="btn-box">
                                             <a href="" class="btn1"> Shop Now </a>
-                                        </div>
+                                        </div> -->
                                     </div>
                                 </div>
                             </div>
@@ -852,8 +1165,7 @@
                             d="M439.296,84.91c-1.024,0-2.56-0.512-4.096-0.512H112.64l-5.12-34.304C104.448,27.566,84.992,10.67,61.952,10.67H20.48
                      C9.216,10.67,0,19.886,0,31.15c0,11.264,9.216,20.48,20.48,20.48h41.472c2.56,0,4.608,2.048,5.12,4.608l31.744,216.064
                      c4.096,27.136,27.648,47.616,55.296,47.616h212.992c26.624,0,49.664-18.944,55.296-45.056l33.28-166.4
-                     C457.728,97.71,450.56,86.958,439.296,84.91z"
-                          ></path>
+                     C457.728,97.71,450.56,86.958,439.296,84.91z"></path>
                         </g>
                       </g>
                       <g>
@@ -882,19 +1194,28 @@
         <div class="container">
             <div class="heading_container heading_center">
                 <h2>Our Categories</h2>
+                <!-- Add search bar -->
+                <div class="search-container mt-4 mb-4">
+                    <div class="input-group" style="max-width: 500px; margin: 0 auto;">
+                        <input type="text" id="searchInput" class="form-control" placeholder="Search products..." style="border-radius: 25px 0 0 25px;">
+                        <button class="btn btn-primary" type="button" id="searchButton" style="border-radius: 0 25px 25px 0; background-color: #ffbe33; border-color: #ffbe33;">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <ul class="filters_menu">
-                <li class="active" data-filter="*">All</li>
-                <li data-filter=".burger">Cricket</li>
-                <li data-filter=".pizza">Football</li>
-                <li data-filter=".pasta">Badminton</li>
-                <li data-filter=".fries">Table Games</li>
+                <li class="active" data-category="all">All</li>
+                <li data-category="cricket">Cricket</li>
+                <li data-category="football">Football</li>
+                <li data-category="badminton">Badminton</li>
+                <li data-category="table_games">Table Games</li>
             </ul>
             <div class="filters-content">
-                <div class="row">
+                <div class="row product-container">
                     {% for product in products %}
-                    <div class="col-sm-12 col-lg-4 col-md-6 mb-4">
+                    <div class="col-sm-12 col-lg-4 col-md-6 mb-4 product-item" data-category="{{ product.category|lower }}">
                         <a href="{% url 'product_detail' product.id %}">
                             <div class="box">
                                 <div class="img-box">
@@ -920,13 +1241,6 @@
                                 </div>
                             </div>
                         </a>
-                    </div>
-                    {% if forloop.counter|divisibleby:3 %}
-                    </div><div class="row">
-                    {% endif %}
-                    {% empty %}
-                    <div class="col-12">
-                        <p>No products available at the moment.</p>
                     </div>
                     {% endfor %}
                 </div>
@@ -963,7 +1277,7 @@
                             Ipsum, you need to be sure there isn't anything embarrassing
                             hidden in the middle of text. All
                         </p>
-                        <a href="#"> Read More </a>
+                        <!-- <a href="#"> Read More </a> -->
                     </div>
                 </div>
             </div>
@@ -1153,37 +1467,97 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
     $(document).ready(function() {
-        $('.add-to-cart').click(function(e) {
-            e.preventDefault();
-            var productId = $(this).data('product-id');
-            $.ajax({
-                url: '{% url "cart_view" %}',
-                type: 'POST',
-                data: {
-                    'product_id': productId,
-                    'csrfmiddlewaretoken': '{{ csrf_token }}'
-                },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.status === 'success') {
-                        alert(response.message);
-                        // Update cart count in navbar if you have one
-                        // $('#cart-count').text(response.cart_count);
+        let searchTimer;
+        
+        // Category filter handling
+        $('.filters_menu li').click(function() {
+            const $this = $(this);
+            const category = $this.data('category');
+            
+            // Update active state
+            $('.filters_menu li').removeClass('active');
+            $this.addClass('active');
+            
+            // Filter products directly in the DOM
+            if (category === 'all') {
+                $('.product-item').show();
+            } else {
+                $('.product-item').each(function() {
+                    const productCategory = $(this).data('category');
+                    if (productCategory === category) {
+                        $(this).show();
                     } else {
-                        alert(response.message);
+                        $(this).hide();
                     }
-                },
-                error: function(xhr, errmsg, err) {
-                    console.log('XHR:', xhr);
-                    console.log('Error message:', errmsg);
-                    console.log('Error:', err);
-                    alert('An error occurred. Please check the console for more details.');
+                });
+            }
+        });
+
+        // Search functionality
+        function performSearch() {
+            const searchText = $('#searchInput').val().toLowerCase();
+            const activeCategory = $('.filters_menu li.active').data('category');
+            
+            $('.product-item').each(function() {
+                const $item = $(this);
+                const productName = $item.find('h5').text().toLowerCase();
+                const productDescription = $item.find('.detail-box p').text().toLowerCase();
+                const productCategory = $item.data('category');
+                
+                const matchesSearch = productName.includes(searchText) || 
+                                    productDescription.includes(searchText);
+                const matchesCategory = activeCategory === 'all' || 
+                                      productCategory === activeCategory;
+                
+                if (matchesSearch && matchesCategory) {
+                    $item.show();
+                } else {
+                    $item.hide();
                 }
             });
+        }
+
+        // Debounced search
+        $('#searchInput').on('keyup', function() {
+            clearTimeout(searchTimer);
+            searchTimer = setTimeout(performSearch, 300);
         });
+
+        $('#searchButton').on('click', performSearch);
+
+        // Initialize add to cart functionality
+        function initializeAddToCart() {
+            $('.add-to-cart').click(function(e) {
+                e.preventDefault();
+                const productId = $(this).data('product-id');
+                
+                $.ajax({
+                    url: '{% url "cart_view" %}',
+                    type: 'POST',
+                    data: {
+                        'product_id': productId,
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    success: function(response) {
+                        if (response.status === 'success') {
+                            alert(response.message);
+                        } else {
+                            alert(response.message);
+                        }
+                    },
+                    error: function(xhr, errmsg, err) {
+                        console.error('Error:', err);
+                        alert('An error occurred. Please try again.');
+                    }
+                });
+            });
+        }
+
+        // Initialize add to cart on page load
+        initializeAddToCart();
     });
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
     <!-- bootstrap js -->
     <script src="{% static 'assets/js/bootstrap.js' %}"></script>
     <!-- owl slider -->
@@ -1195,36 +1569,68 @@
     <!-- custom js -->
     <script src="{% static 'assets/js/custom.js' %}"></script>
     <!-- Google Map -->
-    <!-- <script
-        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCh39n5U-4IoWpsVGUHWdqB6puEkhRLdmI&amp;callback=myMap"></script> -->
+    <script
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCh39n5U-4IoWpsVGUHWdqB6puEkhRLdmI&amp;callback=myMap"></script>
     <!-- End Google Map -->
 
     <!-- Chat Widget -->
-    <div class="chat-widget" id="chatWidget">
-        <!-- Chat Button -->
-        <button class="chat-button" onclick="toggleChat()">
-            <i class="fas fa-comments"></i>
-            {% if total_unread > 0 %}
-                <span class="badge bg-danger">{{ total_unread }}</span>
-            {% endif %}
+    <div class="chat-widget">
+        <!-- AI Chatbot Button & Window -->
+        <button class="chat-button ai-chat" onclick="toggleAIChat()">
+            <i class="fas fa-robot"></i>
         </button>
+        
+        <div class="chat-window" id="aiChatWindow">
+            <div class="chat-header">
+                <h5>AI Assistant</h5>
+                <button type="button" class="close-btn" onclick="toggleAIChat()">&times;</button>
+            </div>
+            
+            <div class="chat-messages" id="aiChatMessages">
+                <div class="message received">
+                    Hi! I'm your AI shopping assistant. How can I help you today?
+                </div>
+            </div>
+            
+            <div class="chat-input">
+                <div class="input-group">
+                    <input type="text" class="form-control" id="aiMessageInput" placeholder="Ask me anything...">
+                    <button class="btn btn-primary" type="button" onclick="handleSendMessage()">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
 
-        <!-- Chat Window -->
-        <div class="chat-window" id="chatWindow">
+        <!-- Admin Chat Button & Window -->
+        {% if customer %}
+        <button class="chat-button admin-chat" onclick="toggleAdminChat()">
+            <i class="fas fa-headset"></i>
+            <span class="badge bg-danger" id="adminUnreadBadge" style="display: {% if total_unread > 0 %}block{% else %}none{% endif %}">
+                {{ total_unread }}
+            </span>
+        </button>
+        
+        <div class="chat-window" id="adminChatWindow">
             <div class="chat-header">
                 <h5>Chat with Admin</h5>
-                <button class="close-button" onclick="toggleChat()">
-                    <i class="fas fa-times"></i>
-                </button>
+                <button class="close-btn" onclick="toggleAdminChat()">&times;</button>
             </div>
-            <div class="chat-messages" id="chatMessages">
-                <!-- Messages will be loaded here -->
+            
+            <div class="chat-messages" id="adminChatMessages">
+                {% for message in messages %}
+                <div class="message {% if message.sender.customer_id == current_customer.customer_id %}sent{% else %}received{% endif %}">
+                    {{ message.content }}
+                    <div class="timestamp">{{ message.timestamp|date:"M d, Y H:i" }}</div>
+                </div>
+                {% endfor %}
             </div>
+            
             <div class="chat-input">
-                <form id="chatForm" onsubmit="sendMessage(event)">
+                <form id="adminMessageForm" onsubmit="sendAdminMessage(event)">
                     {% csrf_token %}
                     <div class="input-group">
-                        <input type="text" class="form-control" placeholder="Type a message..." id="messageInput" required>
+                        <input type="text" class="form-control" name="message" placeholder="Type your message..." required>
                         <button class="btn btn-primary" type="submit">
                             <i class="fas fa-paper-plane"></i>
                         </button>
@@ -1232,66 +1638,287 @@
                 </form>
             </div>
         </div>
+        {% endif %}
     </div>
 
-    <!-- Add this JavaScript before the closing </body> tag -->
-    <script>
-        function toggleChat() {
-            const chatWindow = document.getElementById('chatWindow');
-            chatWindow.classList.toggle('active');
-            if (chatWindow.classList.contains('active')) {
-                loadMessages();
-            }
-        }
+    <!-- Update the chat section at the bottom -->
+    {% if customer %}
+        <div class="chat-section">
+            {% if chat_users %}
+                {% if current_chat_user %}
+                    <script>
+                        function getMessages() {
+                            $.get("{% url 'get_new_messages' user_id=current_chat_user.customer_id %}", function(response) {
+                                // Handle response
+                            });
+                        }
+                    </script>
+                {% endif %}
+            {% endif %}
+        </div>
+    {% endif %}
 
-        function loadMessages() {
-            $.get('{% url "get_chat_messages" %}', function(response) {
-                const chatMessages = document.getElementById('chatMessages');
-                chatMessages.innerHTML = '';
-                
-                response.messages.forEach(message => {
-                    const messageDiv = document.createElement('div');
-                    messageDiv.className = `message ${message.is_sender ? 'sent' : 'received'}`;
-                    messageDiv.innerHTML = `
-                        ${message.message}
-                        <div class="timestamp">${message.timestamp}</div>
-                    `;
-                    chatMessages.appendChild(messageDiv);
+    <!-- Update the chat widget JavaScript section -->
+    <script>
+    let isAIChatActive = false;
+
+    function toggleAIChat() {
+        const aiChatWindow = document.getElementById('aiChatWindow');
+        isAIChatActive = !isAIChatActive;
+        aiChatWindow.style.display = isAIChatActive ? 'flex' : 'none';
+        
+        // Close admin chat if open
+        const adminChatWindow = document.getElementById('adminChatWindow');
+        if (adminChatWindow) {
+            adminChatWindow.style.display = 'none';
+        }
+    }
+
+    async function handleSendMessage() {
+        const input = document.getElementById('aiMessageInput');
+        const message = input.value.trim();
+        const chatMessages = document.getElementById('aiChatMessages');
+        
+        if (message) {
+            // Add user message
+            const userMessageHtml = `
+                <div class="message sent">
+                    ${message}
+                    <div class="timestamp">${new Date().toLocaleTimeString()}</div>
+                </div>
+            `;
+            chatMessages.insertAdjacentHTML('beforeend', userMessageHtml);
+            
+            // Clear input and scroll
+            input.value = '';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Show typing indicator
+            const typingHtml = `
+                <div class="message received typing-indicator" id="typingIndicator">
+                    <div class="typing-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            `;
+            chatMessages.insertAdjacentHTML('beforeend', typingHtml);
+            
+            try {
+                const response = await fetch('{% url "gemini_chat" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ message: message })
                 });
                 
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                const data = await response.json();
+                
+                // Remove typing indicator
+                const typingIndicator = document.getElementById('typingIndicator');
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+                
+                if (data.status === 'success') {
+                    let responseHtml = '';
+                    
+                    // Check if profile data is included in the response
+                    if (data.profile_data) {
+                        responseHtml = `
+                            <div class="message received">
+                                <div class="profile-card">
+                                    <div class="profile-header">
+                                        <div class="profile-avatar">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                        <div class="profile-info">
+                                            <div class="profile-name">${data.profile_data.name}</div>
+                                        </div>
+                                    </div>
+                                    <div class="profile-detail">
+                                        <i class="fas fa-envelope"></i>
+                                        <span>${data.profile_data.email}</span>
+                                    </div>
+                                    <div class="profile-detail">
+                                        <i class="fas fa-phone"></i>
+                                        <span>${data.profile_data.phone}</span>
+                                    </div>
+                                    <div class="profile-detail">
+                                        <i class="fas fa-map-marker-alt"></i>
+                                        <span>${data.profile_data.address}</span>
+                                    </div>
+                                </div>
+                                <div class="timestamp">${new Date().toLocaleTimeString()}</div>
+                            </div>
+                        `;
+                    } else {
+                        // Format the response text with proper line breaks
+                        const formattedResponse = data.response.replace(/\n/g, '<br>');
+                        responseHtml = `
+                            <div class="message received">
+                                ${formattedResponse}
+                                <div class="timestamp">${new Date().toLocaleTimeString()}</div>
+                            </div>
+                        `;
+                    }
+                    
+                    chatMessages.insertAdjacentHTML('beforeend', responseHtml);
+                } else {
+                    throw new Error(data.message || 'Failed to get response');
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                const typingIndicator = document.getElementById('typingIndicator');
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+                
+                const errorHtml = `
+                    <div class="message error">
+                        Sorry, I encountered an error. Please try again.
+                        <div class="timestamp">${new Date().toLocaleTimeString()}</div>
+                    </div>
+                `;
+                chatMessages.insertAdjacentHTML('beforeend', errorHtml);
+            }
+            
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    }
+
+    // Add event listener for Enter key
+    document.getElementById('aiMessageInput').addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            handleSendMessage();
+        }
+    });
+
+    // Admin Chat Functions
+    function toggleAdminChat() {
+        const adminChatWindow = document.getElementById('adminChatWindow');
+        const isVisible = adminChatWindow.style.display === 'flex';
+        adminChatWindow.style.display = isVisible ? 'none' : 'flex';
+        
+        // Close AI chat if open
+        const aiChatWindow = document.getElementById('aiChatWindow');
+        aiChatWindow.style.display = 'none';
+        isAIChatActive = false;
+        
+        if (!isVisible) {
+            loadMessages();
+        }
+    }
+
+    function sendAdminMessage(event) {
+        event.preventDefault();
+        const form = document.getElementById('adminMessageForm');
+        const input = form.querySelector('input[name="message"]');
+        const message = input.value.trim();
+        
+        if (message) {
+            $.ajax({
+                type: 'POST',
+                url: '{% url "send_chat_message" %}',
+                data: {
+                    message: message,
+                    receiver_id: '{{ chat_users.first.customer_id }}',
+                    csrfmiddlewaretoken: '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        const messageHtml = `
+                            <div class="message sent">
+                                ${message}
+                                <div class="timestamp">${response.timestamp}</div>
+                            </div>
+                        `;
+                        const chatMessages = document.getElementById('adminChatMessages');
+                        chatMessages.insertAdjacentHTML('beforeend', messageHtml);
+                        input.value = '';
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error sending message:', error);
+                    alert('Failed to send message. Please try again.');
+                }
             });
         }
+    }
 
-        function sendMessage(event) {
-            event.preventDefault();
-            const input = document.getElementById('messageInput');
-            const message = input.value.trim();
+    function loadMessages() {
+        {% if chat_users.first %}
+        $.get('{% url "get_new_messages" user_id=chat_users.first.customer_id %}', function(response) {
+            const chatMessages = document.getElementById('adminChatMessages');
+            const unreadBadge = document.getElementById('adminUnreadBadge');
             
-            if (message) {
-                $.ajax({
-                    type: 'POST',
-                    url: '{% url "send_chat_message" %}',
-                    data: {
-                        'message': message,
-                        'csrfmiddlewaretoken': '{{ csrf_token }}'
-                    },
-                    success: function(response) {
-                        if (response.status === 'success') {
-                            input.value = '';
-                            loadMessages();
-                        }
-                    }
+            if (response.messages && response.messages.length > 0) {
+                chatMessages.innerHTML = ''; // Clear existing messages
+                response.messages.forEach(function(msg) {
+                    const messageHtml = `
+                        <div class="message ${msg.is_sender ? 'sent' : 'received'}">
+                            ${msg.message}
+                            <div class="timestamp">${msg.timestamp}</div>
+                        </div>
+                    `;
+                    chatMessages.insertAdjacentHTML('beforeend', messageHtml);
                 });
+                chatMessages.scrollTop = chatMessages.scrollHeight;
             }
-        }
+            
+            if (response.unread_count > 0) {
+                unreadBadge.textContent = response.unread_count;
+                unreadBadge.style.display = 'block';
+            } else {
+                unreadBadge.style.display = 'none';
+            }
+        });
+        {% endif %}
+    }
 
-        // Poll for new messages every 5 seconds
-        setInterval(function() {
-            if (document.getElementById('chatWindow').classList.contains('active')) {
-                loadMessages();
-            }
-        }, 5000);
+    // Set up periodic message checking for admin chat
+    setInterval(loadMessages, 5000);
+    </script>
+
+    <!-- Add this JavaScript before the closing body tag -->
+    <script>
+    $(document).ready(function() {
+        // Search functionality
+        $('#searchInput').on('keyup', function() {
+            var searchText = $(this).val().toLowerCase();
+            
+            $('.col-sm-12.col-lg-4.col-md-6').each(function() {
+                var productName = $(this).find('h5').text().toLowerCase();
+                var productDescription = $(this).find('.detail-box p').text().toLowerCase();
+                
+                if (productName.includes(searchText) || productDescription.includes(searchText)) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+        });
+
+        // Search button click handler
+        $('#searchButton').on('click', function() {
+            var searchText = $('#searchInput').val().toLowerCase();
+            
+            $('.col-sm-12.col-lg-4.col-md-6').each(function() {
+                var productName = $(this).find('h5').text().toLowerCase();
+                var productDescription = $(this).find('.detail-box p').text().toLowerCase();
+                
+                if (productName.includes(searchText) || productDescription.includes(searchText)) {
+                    $(this).show();
+                } else {
+                    $(this).hide();
+                }
+            });
+        });
+    });
     </script>
 </body>
 

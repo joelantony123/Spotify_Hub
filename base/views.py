@@ -36,8 +36,12 @@ from io import BytesIO
 from django.http import FileResponse
 import os
 from .models import Review
-from django.template.loader import get_template
+from django.template.loader import get_template, render_to_string
 from django.template.exceptions import TemplateDoesNotExist
+from .models import ChatMessage
+from .chatbot import get_chatbot_response
+from django.db.models import Q
+import google.generativeai as genai
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -88,23 +92,43 @@ def home(request):
     if customer_id:
         try:
             customer = Customer.objects.get(customer_id=customer_id)
-            products = Product.objects.all()
+            # Get all products and order them by name
+            products = Product.objects.all().order_by('name')
             
-            # Debug logging
-            logger.info(f"Customer authenticated: {customer.email}")
-            logger.info(f"Number of products: {products.count()}")
+            # Get chat users for the current customer
+            chat_users = []
+            if customer.user_type == 'admin':
+                chat_users = Customer.objects.filter(user_type='customer', is_active=True)
+            else:
+                chat_users = Customer.objects.filter(user_type='admin', is_active=True)
+            
+            # Get initial messages for the first admin (for customers)
+            messages_list = []
+            if chat_users.exists():
+                messages_list = ChatMessage.objects.filter(
+                    (Q(sender=customer) & Q(receiver=chat_users.first())) |
+                    (Q(sender=chat_users.first()) & Q(receiver=customer))
+                ).order_by('timestamp')
+            
+            # Get actual unread message count
+            total_unread = ChatMessage.objects.filter(
+                receiver=customer,
+                is_read=False
+            ).count()
             
             return render(request, 'home.html', {
                 'customer': customer, 
-                'products': products
+                'products': products,
+                'chat_users': chat_users,
+                'messages': messages_list,
+                'total_unread': total_unread,
+                'current_customer': customer
             })
+            
         except Customer.DoesNotExist:
-            logger.error(f"Customer ID {customer_id} not found in database")
             request.session.flush()
             return redirect('login')
-    else:
-        logger.info("No customer_id in session")
-        return redirect('login')
+    return redirect('login')
 
 @never_cache
 def signup_view(request):
@@ -158,33 +182,68 @@ def custom_logout(request):
     response['Expires'] = '0'
     return response
 
+@never_cache
 def admin_dashboard(request):
-    if request.method == 'POST':
-        try:
-            name = request.POST.get('product_name')
-            description = request.POST.get('product_description')
-            price = request.POST.get('product_price')
-            category = request.POST.get('product_category')
-            image = request.FILES.get('product_image')
-            stock = request.POST.get('product_stock')
+    customer_id = request.session.get('customer_id')
+    if not customer_id:
+        return redirect('login')
+        
+    try:
+        admin_user = Customer.objects.get(customer_id=customer_id)
+        if admin_user.user_type != 'admin':
+            messages.error(request, 'Unauthorized access.')
+            return redirect('login')
+            
+        if request.method == 'POST':
+            try:
+                name = request.POST.get('product_name')
+                description = request.POST.get('product_description')
+                price = request.POST.get('product_price')
+                category = request.POST.get('product_category')
+                image = request.FILES.get('product_image')
+                stock = request.POST.get('product_stock')
 
-            product = Product(
-                name=name,
-                description=description,
-                price=price,
-                category=category,
-                image=image,
-                stock=stock
-            )
-            product.save()
-            messages.success(request, f'Product "{name}" has been added successfully.')
-            return redirect('admin_dashboard')
-        except Exception as e:
-            messages.error(request, f'Error adding product: {str(e)}')
-    
-    # Get all products to display in admin dashboard
-    products = Product.objects.all()
-    return render(request, 'admin.html', {'products': products})
+                product = Product(
+                    name=name,
+                    description=description,
+                    price=price,
+                    category=category,
+                    image=image,
+                    stock=stock
+                )
+                product.save()
+                messages.success(request, f'Product "{name}" has been added successfully.')
+                return redirect('admin_dashboard')
+            except Exception as e:
+                messages.error(request, f'Error adding product: {str(e)}')
+        
+        # Get all products to display in admin dashboard
+        products = Product.objects.all()
+        
+        # Get total unread messages for admin
+        total_unread = ChatMessage.objects.filter(
+            receiver=admin_user,
+            is_read=False
+        ).count()
+        
+        # Get chat users (all active customers for admin)
+        chat_users = Customer.objects.filter(user_type='customer', is_active=True)
+        
+        context = {
+            'products': products,
+            'total_unread': total_unread,
+            'chat_users': chat_users,
+            'current_customer': admin_user  # Add current customer (admin) to context
+        }
+        
+        return render(request, 'admin.html', context)
+        
+    except Customer.DoesNotExist:
+        return redirect('login')
+    except Exception as e:
+        logger.error(f"Error in admin dashboard: {str(e)}")
+        messages.error(request, "An error occurred while loading the admin dashboard")
+        return redirect('login')
 
 def is_admin(user):
     try:
@@ -238,12 +297,30 @@ def product_admin(request):
         return redirect('login')
     try:
         customer = Customer.objects.get(customer_id=customer_id)
-        products = Product.objects.all()
+        
+        # Get search query
+        search_query = request.GET.get('search', '')
+        
+        # Filter products based on search query
+        if search_query:
+            products = Product.objects.filter(
+                Q(name__icontains=search_query) |
+                Q(description__icontains=search_query) |
+                Q(category__icontains=search_query)
+            )
+        else:
+            products = Product.objects.all()
         
         if not request.session.get('customer_email'):
             request.session['customer_email'] = customer.email
         
-        return render(request, 'product.html', {'customer': customer, 'products': products})
+        context = {
+            'customer': customer, 
+            'products': products,
+            'search_query': search_query
+        }
+        
+        return render(request, 'product.html', context)
     except Customer.DoesNotExist:
         return redirect('login')
 
@@ -1157,7 +1234,16 @@ def chat_view(request):
             admins = Customer.objects.filter(user_type='admin', is_active=True)
             chat_users = chat_users.union(admins)
 
-        # Get current chat user from query params
+        # Get unread counts for each user
+        unread_counts = {}
+        for user in chat_users:
+            unread_counts[user.customer_id] = ChatMessage.objects.filter(
+                sender=user,
+                receiver=current_customer,
+                is_read=False
+            ).count()
+
+        # Get current chat user and messages
         current_chat_user_id = request.GET.get('user')
         current_chat_user = None
         messages_list = []
@@ -1170,50 +1256,20 @@ def chat_view(request):
                     (Q(sender=current_chat_user) & Q(receiver=current_customer))
                 ).order_by('timestamp')
                 
-                # Mark messages as read
+                # Mark messages as read for current chat
                 messages_list.filter(receiver=current_customer, is_read=False).update(is_read=True)
+                # Update unread count for current chat user
+                unread_counts[current_chat_user_id] = 0
             except Customer.DoesNotExist:
                 pass
-
-        # Handle new message submission
-        if request.method == 'POST' and current_chat_user:
-            message_text = request.POST.get('message')
-            if message_text:
-                message = ChatMessage.objects.create(
-                    sender=current_customer,
-                    receiver=current_chat_user,
-                    message=message_text
-                )
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({
-                        'status': 'success',
-                        'message': message_text,
-                        'timestamp': message.timestamp.strftime("%b %d, %Y %H:%M")
-                    })
-
-        # Get unread message counts
-        unread_counts = {}
-        for user in chat_users:
-            unread_counts[user.customer_id] = ChatMessage.objects.filter(
-                sender=user,
-                receiver=current_customer,
-                is_read=False
-            ).count()
-
-        # Calculate total unread messages for navbar badge
-        total_unread = sum(unread_counts.values())
 
         context = {
             'chat_users': chat_users,
             'current_chat_user': current_chat_user,
             'messages': messages_list,
             'unread_counts': unread_counts,
-            'total_unread': total_unread,
-            'current_customer': current_customer,  # Add this for the template
+            'current_customer': current_customer,
         }
-        
-        logger.info(f"Chat view loaded for customer {current_customer.name}")
-        logger.info(f"Number of chat users: {chat_users.count()}")
         
         return render(request, 'chat.html', context)
                 
@@ -1229,29 +1285,347 @@ def chat_view(request):
 def get_new_messages(request, user_id):
     customer_id = request.session.get('customer_id')
     if not customer_id:
-        return JsonResponse({'messages': []})
+        return JsonResponse({'messages': [], 'unread_counts': {}})
     
     try:
         current_customer = Customer.objects.get(customer_id=customer_id)
         other_user = Customer.objects.get(customer_id=user_id)
         
-        # Get unread messages from the other user
-        new_messages = ChatMessage.objects.filter(
+        # Get recent messages
+        recent_messages = ChatMessage.objects.filter(
+            (Q(sender=current_customer) & Q(receiver=other_user)) |
+            (Q(sender=other_user) & Q(receiver=current_customer))
+        ).order_by('-timestamp')[:50]
+        
+        # Mark messages as read for current chat
+        ChatMessage.objects.filter(
             sender=other_user,
             receiver=current_customer,
             is_read=False
-        ).order_by('timestamp')
+        ).update(is_read=True)
         
-        # Mark messages as read
-        new_messages.update(is_read=True)
+        # Get updated unread counts for all users
+        chat_users = Customer.objects.filter(
+            Q(customer_id__in=ChatMessage.objects.filter(receiver=current_customer).values('sender__customer_id')) |
+            Q(customer_id__in=ChatMessage.objects.filter(sender=current_customer).values('receiver__customer_id'))
+        ).distinct()
         
-        # Format messages for JSON response
+        unread_counts = {}
+        for user in chat_users:
+            unread_counts[str(user.customer_id)] = ChatMessage.objects.filter(
+                sender=user,
+                receiver=current_customer,
+                is_read=False
+            ).count()
+        
         messages_data = [{
             'message': msg.message,
             'timestamp': msg.timestamp.strftime("%b %d, %Y %H:%M"),
-            'is_sender': False
-        } for msg in new_messages]
+            'is_sender': msg.sender == current_customer
+        } for msg in reversed(recent_messages)]
         
-        return JsonResponse({'messages': messages_data})
+        return JsonResponse({
+            'messages': messages_data,
+            'unread_counts': unread_counts
+        })
+        
     except Customer.DoesNotExist:
-        return JsonResponse({'messages': []})
+        return JsonResponse({'messages': [], 'unread_counts': {}})
+
+@never_cache
+def product_list(request):
+    # Check if user is admin
+    customer_id = request.session.get('customer_id')
+    try:
+        admin_user = Customer.objects.get(customer_id=customer_id)
+        if admin_user.user_type != 'admin':
+            messages.error(request, 'Unauthorized access.')
+            return redirect('login')
+    except Customer.DoesNotExist:
+        return redirect('login')
+
+    # Get all products
+    products = Product.objects.all()
+    
+    # Get total unread messages for admin
+    total_unread = ChatMessage.objects.filter(
+        receiver=admin_user,
+        is_read=False
+    ).count()
+
+    context = {
+        'products': products,
+        'total_unread': total_unread
+    }
+    return render(request, 'product_list.html', context)
+
+@require_POST
+@never_cache
+def send_chat_message(request):
+    if not request.session.get('customer_id'):
+        return JsonResponse({'status': 'error', 'message': 'Please login to send messages'})
+    
+    try:
+        current_customer = Customer.objects.get(customer_id=request.session['customer_id'])
+        message_text = request.POST.get('message', '').strip()
+        receiver_id = request.POST.get('receiver_id')
+        
+        if not message_text:
+            return JsonResponse({'status': 'error', 'message': 'Message cannot be empty'})
+            
+        if not receiver_id:
+            return JsonResponse({'status': 'error', 'message': 'No recipient selected'})
+            
+        try:
+            receiver = Customer.objects.get(customer_id=receiver_id)
+        except Customer.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Recipient not found'})
+        
+        # Create and save the message
+        message = ChatMessage.objects.create(
+            sender=current_customer,
+            receiver=receiver,
+            message=message_text
+        )
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': message_text,
+            'timestamp': message.timestamp.strftime("%b %d, %Y %H:%M")
+        })
+        
+    except Exception as e:
+        logger.error(f"Error sending chat message: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'message': 'An error occurred while sending the message'
+        })
+
+@require_POST
+def chatbot_message(request):
+    try:
+        message = request.POST.get('message', '').strip()
+        if not message:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Message cannot be empty'
+            })
+        
+        response = get_chatbot_response(message)
+        logger.info(f"Chatbot response status: {response['status']}")
+        
+        return JsonResponse(response)
+        
+    except Exception as e:
+        logger.error(f"Chatbot view error: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'message': 'An error occurred while processing your request'
+        }, status=500)
+
+@never_cache
+def search_products(request):
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        search_query = request.GET.get('search', '')
+        try:
+            if search_query:
+                products = Product.objects.filter(
+                    Q(name__icontains=search_query) |
+                    Q(description__icontains=search_query) |
+                    Q(category__icontains=search_query)
+                ).order_by('name')
+            else:
+                products = Product.objects.all().order_by('name')
+
+            html = render_to_string(
+                template_name='product_list_partial.html',
+                context={'products': products},
+                request=request
+            )
+            
+            return JsonResponse({
+                'status': 'success',
+                'html': html,
+                'count': products.count()
+            })
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            })
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'})
+
+@require_http_methods(["GET"])
+def filter_products(request):
+    try:
+        category = request.GET.get('category', 'all')
+        search_query = request.GET.get('search', '')
+        
+        # Start with all products
+        products = Product.objects.all()
+        
+        # Apply category filter if not 'all'
+        if category != 'all':
+            products = products.filter(category__iexact=category)
+            
+        # Apply search filter if exists
+        if search_query:
+            products = products.filter(
+                Q(name__icontains=search_query) |
+                Q(description__icontains=search_query)
+            )
+        
+        # Render only the products section
+        html = render_to_string('product_list_partial.html', {
+            'products': products
+        }, request=request)
+        
+        return JsonResponse({
+            'status': 'success',
+            'html': html
+        })
+        
+    except Exception as e:
+        logger.error(f"Error filtering products: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+@csrf_exempt
+def gemini_chat(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            message = data.get('message', '').lower()
+            customer_id = request.session.get('customer_id')
+            
+            if not message:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Message cannot be empty'
+                })
+
+            # Check for profile-related queries
+            profile_keywords = ['my profile', 'my details', 'my information', 'who am i', 'my name']
+            if any(keyword in message for keyword in profile_keywords):
+                if customer_id:
+                    try:
+                        customer = Customer.objects.get(customer_id=customer_id)
+                        return JsonResponse({
+                            'status': 'success',
+                            'profile_data': {
+                                'name': customer.name,
+                                'email': customer.email,
+                                'phone': customer.phone or 'Not provided',
+                                'address': customer.address or 'Not provided'
+                            }
+                        })
+                    except Customer.DoesNotExist:
+                        pass
+                return JsonResponse({
+                    'status': 'success',
+                    'response': "I'm sorry, but you need to be logged in to view your profile information."
+                })
+
+            # Check for order-related queries
+            elif 'my order' in message or 'my orders' in message:
+                if customer_id:
+                    try:
+                        customer = Customer.objects.get(customer_id=customer_id)
+                        orders = Order.objects.filter(customer=customer).order_by('-order_date')[:5]
+                        if orders:
+                            response = "Here are your recent orders:\n"
+                            for order in orders:
+                                response += f"Order #{order.id}: {order.status}, Total: ${order.total_amount}, Date: {order.order_date.strftime('%Y-%m-%d')}\n"
+                        else:
+                            response = "You don't have any orders yet. Would you like to browse our products?"
+                        return JsonResponse({
+                            'status': 'success',
+                            'response': response
+                        })
+                    except Customer.DoesNotExist:
+                        pass
+                return JsonResponse({
+                    'status': 'success',
+                    'response': "Please log in to view your order information."
+                })
+
+            # Check for cart-related queries
+            elif 'my cart' in message or 'shopping cart' in message:
+                if customer_id:
+                    try:
+                        customer = Customer.objects.get(customer_id=customer_id)
+                        cart = Cart.objects.filter(user=customer).first()
+                        if cart:
+                            cart_items = CartItem.objects.filter(cart=cart)
+                            if cart_items:
+                                response = "Here's what's in your cart:\n"
+                                total = 0
+                                for item in cart_items:
+                                    subtotal = item.quantity * item.product.price
+                                    total += subtotal
+                                    response += f"- {item.quantity}x {item.product.name}: ${subtotal}\n"
+                                response += f"\nTotal: ${total}"
+                            else:
+                                response = "Your cart is empty. Would you like to see our products?"
+                        else:
+                            response = "Your cart is empty. Would you like to see our products?"
+                        return JsonResponse({
+                            'status': 'success',
+                            'response': response
+                        })
+                    except Customer.DoesNotExist:
+                        pass
+                return JsonResponse({
+                    'status': 'success',
+                    'response': "Please log in to view your cart information."
+                })
+
+            # Default product search behavior
+            else:
+                products = []
+                if any(word in message for word in ['product', 'price', 'stock', 'cricket', 'football', 'badminton', 'table games']):
+                    products = Product.objects.filter(
+                        Q(name__icontains=message) |
+                        Q(description__icontains=message) |
+                        Q(category__icontains=message)
+                    )[:5]
+
+                product_info = ""
+                if products:
+                    product_info = "Here are some relevant products:\n"
+                    for product in products:
+                        product_info += f"- {product.name}: ${product.price}, Category: {product.category}, Stock: {product.stock}\n"
+                        avg_rating = product.reviews.aggregate(Avg('rating'))['rating__avg']
+                        if avg_rating:
+                            product_info += f"  Average Rating: {avg_rating:.1f}/5\n"
+
+                context = f"""You are a helpful shopping assistant for a sports equipment store. 
+                {product_info if product_info else 'No specific products found for this query.'}
+                
+                Available product categories: {', '.join(dict(Product.CATEGORY_CHOICES).values())}
+                
+                Please provide a helpful response to the customer's query: {message}"""
+
+                genai.configure(api_key='AIzaSyDRG6Ape9UUYl270adHwxWKbK2wTXlQhQU')
+                model = genai.GenerativeModel('gemini-pro')
+                response = model.generate_content(context)
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'response': response.text,
+                    'products_found': bool(products)
+                })
+            
+        except Exception as e:
+            logger.error(f"Gemini chat error: {str(e)}")
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            }, status=500)
+    
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Invalid request method'
+    }, status=405)
