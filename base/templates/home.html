@@ -32,7 +32,7 @@
         crossorigin="anonymous" />
     <!-- font awesome style -->
     <link href="{% static 'assets/css/font-awesome.min.css' %}" rel="stylesheet" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
 
     <!-- Custom styles for this template -->
     <link href="{% static 'assets/css/style.css' %}" rel="stylesheet" />
@@ -934,6 +934,12 @@
             margin: 0;
             color: #333;
         }
+
+        #googleMap {
+            width: 100%;
+            height: 400px;
+            border-radius: 8px;
+        }
     </style>
 </head>
 
@@ -962,44 +968,47 @@
                                 <a class="nav-link" href="#">Home <span class="sr-only">(current)</span></a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="#categories-section">Product</a>
+                                <a class="nav-link" href="#categories-section" style="color: #ffbe33;">Product</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="#about">About</a>
+                                <a class="nav-link" href="#about" style="color: #ffbe33;">About</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="#contact">Contact</a>
+                                <a class="nav-link" href="#contact" style="color: #ffbe33;">Contact</a>
                             </li>   
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button"
-                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                    data-bs-toggle="dropdown" aria-expanded="false" style="color: #ffbe33;">
                                     Profile
                                 </a>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
-                                    <li><a class="dropdown-item" href="{% url 'edit_profile'  %}">
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown" style="background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(5px);">
+                                    <li><a class="dropdown-item" href="{% url 'edit_profile'  %}" style="color: #ffbe33;">
                                             <strong></strong> Edit Profile
                                         </a></li>
                                     <li>
-                                        <hr class="dropdown-divider">
+                                        <hr class="dropdown-divider" style="border-color: rgba(255, 255, 255, 0.1);">
                                     </li>
-                                    <li><a class="dropdown-item" href="#">
+                                    <li><a class="dropdown-item" href="#" style="color: #ffffff;">
                                             <strong>Name</strong> {{ customer.name }}
                                         </a></li>
-                                    <li><a class="dropdown-item" href="#">
+                                    <li><a class="dropdown-item" href="#" style="color: #ffffff;">
                                             <strong>Email:</strong> {{ customer.email }}
                                         </a></li>
-                                    <li><a class="dropdown-item" href="#">
+                                    <li><a class="dropdown-item" href="#" style="color: #ffffff;">
                                             <strong>Phone:</strong> {{ customer.phone }}
                                         </a></li>
-                                    <li><a class="dropdown-item" href="#">
+                                    <li><a class="dropdown-item" href="#" style="color: #ffffff;">
                                             <strong>Address:</strong> {{ customer.address }}
                                         </a></li>
+                                    <li><a class="dropdown-item" href="#" style="color: #ffffff;">
+                                        <strong>Pincode:</strong> {{ customer.pincode }}
+                                    </a></li>
                                 </ul>
                             </li><li class="nav-item">
-                                <a class="nav-link" href="{% url 'purchase_history' %}">Purchase History</a>
+                                <a class="nav-link" href="{% url 'purchase_history' %}" style="color: #ffbe33;">Purchase History</a>
                             </li>
                             <li class="nav-item">
-                                <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+                                <a class="nav-link" href="{% url 'logout' %}" style="color: #ffbe33;">Logout</a>
                             </li>
                             
                         </ul>
@@ -1056,8 +1065,8 @@
                             <div class="row">
                                 <div class="col-md-7 col-lg-6">
                                     <div class="detail-box">
-                                        <h1>Multipurpose Sports Store</h1>
-                                        <p>
+                                        <h1 style="color: white;">Multipurpose Sports Store</h1>
+                                        <p style="color: white;">
                                             Discover top-quality sports gear in our online store.
                                             From footwear to apparel, we've got everything you need to elevate your
                                             game.
@@ -1076,8 +1085,8 @@
                             <div class="row">
                                 <div class="col-md-7 col-lg-6">
                                     <div class="detail-box">
-                                        <h1>Multipurpose Sports Store</h1>
-                                        <p>
+                                        <h1 style="color: white;">Multipurpose Sports Store</h1>
+                                        <p style="color: white;">
                                             Discover top-quality sports gear in our online store.
                                             From footwear to apparel, we've got everything you need to elevate your
                                             game.
@@ -1096,8 +1105,8 @@
                             <div class="row">
                                 <div class="col-md-7 col-lg-6">
                                     <div class="detail-box">
-                                        <h1>Multipurpose Sports Store</h1>
-                                        <p>
+                                        <h1 style="color: white;">Multipurpose Sports Store</h1>
+                                        <p style="color: white;">
                                             Discover top-quality sports gear in our online store.
                                             From footwear to apparel, we've got everything you need to elevate your
                                             game.
@@ -1328,7 +1337,7 @@
                 </div>
                 <div class="col-md-6">
                     <div class="map_container">
-                        <div id="googleMap"></div>
+                        <div id="googleMap" >Geo</div>
                     </div>
                 </div>
             </div>
@@ -1391,60 +1400,60 @@
                 <div class="col-md-4 footer-col">
                     <div class="footer_contact">
                         <h4>Contact Us</h4>
-                        <div class="contact_link_box">
+                        <div class="contact_link_box" style="color: #ffbe33;">
                             <a href="">
-                                <i class="fa fa-map-marker" aria-hidden="true"></i>
-                                <span> Location </span>
+                                <i class="fa fa-map-marker" aria-hidden="true" style="color: #ffbe33;"></i>
+                                <span style="color: #ffbe33;"> Location </span>
                             </a>
                             <a href="">
-                                <i class="fa fa-phone" aria-hidden="true"></i>
-                                <span> Call +91 8086729467 </span>
+                                <i class="fa fa-phone" aria-hidden="true" style="color: #ffbe33;"></i>
+                                <span style="color: #ffbe33;"> Call +91 8086729467 </span>
                             </a>
                             <a href="">
-                                <i class="fa fa-envelope" aria-hidden="true"></i>
-                                <span> spotifyhub83@gmail.com </span>
+                                <i class="fa fa-envelope" aria-hidden="true" style="color: #ffbe33;"></i>
+                                <span style="color: #ffbe33;"> spotifyhub83@gmail.com </span>
                             </a>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4 footer-col">
                     <div class="footer_detail">
-                        <a href="" class="footer-logo"> Feane </a>
+                        <!-- <a href="" class="footer-logo"> Feane </a>
                         <p>
                             Necessary, making this the first true generator on the Internet.
                             It uses a dictionary of over 200 Latin words, combined with
-                        </p>
-                        <div class="footer_social">
+                        </p> -->
+                        <div class="footer_social" style="color: #ffbe33;">
                             <a href="">
-                                <i class="fa fa-facebook" aria-hidden="true"></i>
+                                <i class="fab fa-facebook" style="color: #ffbe33;"></i>
                             </a>
                             <a href="">
-                                <i class="fa fa-twitter" aria-hidden="true"></i>
+                                <i class="fab fa-twitter" style="color: #ffbe33;"></i>
                             </a>
                             <a href="">
-                                <i class="fa fa-linkedin" aria-hidden="true"></i>
+                                <i class="fab fa-linkedin" style="color: #ffbe33;"></i>
                             </a>
                             <a href="">
-                                <i class="fa fa-instagram" aria-hidden="true"></i>
+                                <i class="fab fa-instagram" style="color: #ffbe33;"></i>
                             </a>
                             <a href="">
-                                <i class="fa fa-pinterest" aria-hidden="true"></i>
+                                <i class="fab fa-pinterest" style="color: #ffbe33;"></i>
                             </a>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4 footer-col">
+                <div class="col-md-4 footer-col" style="color: #ffbe33;">
                     <h4>Opening Hours</h4>
                     <p>Everyday</p>
                     <p>10.00 Am -10.00 Pm</p>
                 </div>
             </div>
             <div class="footer-info">
-                <p>
+                <p style="color: #ffbe33;">
                     © <span id="displayYear"></span> All Rights Reserved By
-                    <a href="https://html.design/">Free Html Templates</a><br /><br />
+                    <a href="https://html.design/" style="color: #ffbe33;">Joel Antony</a><br /><br />
                     © <span id="displayYear"></span> Distributed By
-                    <a href="https://themewagon.com/" target="_blank">ThemeWagon</a>
+                    <a href="https://themewagon.com/" target="_blank" style="color: #ffbe33;">Spotify Hub</a>
                 </p>
             </div>
         </div>
@@ -1570,7 +1579,7 @@
     <script src="{% static 'assets/js/custom.js' %}"></script>
     <!-- Google Map -->
     <script
-        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCh39n5U-4IoWpsVGUHWdqB6puEkhRLdmI&amp;callback=myMap"></script>
+        src="https://maps.googleapis.com/maps/api/js?key=YOUR_ACTUAL_API_KEY&callback=initMap" async defer></script>
     <!-- End Google Map -->
 
     <!-- Chat Widget -->

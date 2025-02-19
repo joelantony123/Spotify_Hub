@@ -7,6 +7,7 @@
     <title>Admin - Add Product</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{% static 'css/admin_styles.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
     <style>
         .table img {
             max-width: 50px;
@@ -104,6 +105,21 @@
                                 {% if total_unread > 0 %}
                                     <span class="badge bg-danger rounded-pill">{{ total_unread }}</span>
                                 {% endif %}
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'delivery_applications' %}" class="nav-link px-0 align-middle">
+                                <i class="fs-4 bi-person-badge"></i> 
+                                <span class="ms-1 d-none d-sm-inline">Delivery Applications</span>
+                                {% if pending_applications_count > 0 %}
+                                    <span class="badge bg-warning rounded-pill">{{ pending_applications_count }}</span>
+                                {% endif %}
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'work_assign' %}" class="nav-link px-0 align-middle">
+                                <i class="bi bi-truck"></i>
+                                <span class="ms-1 d-none d-sm-inline">Assign Deliveries</span>
                             </a>
                         </li>
                         <li>

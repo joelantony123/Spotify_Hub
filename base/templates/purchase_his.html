@@ -11,17 +11,21 @@
     <!-- Custom CSS -->
     <style>
         body {
-            background-color: #f8f9fa;
+            background-image: url('/static/assets/images/hero-bg.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            background-color: #f8f9fa; /* Fallback color */
             padding: 20px;
         }
         .order-card {
-            background-color: white;
+            background-color: rgba(255, 255, 255, 0.5);
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
             margin-bottom: 20px;
         }
         .order-header {
-            background-color: #f8f9fa;
+            background-color: rgba(255, 255, 255, 0.5);
             padding: 15px;
             border-radius: 8px 8px 0 0;
             border-bottom: 1px solid #dee2e6;
@@ -53,9 +57,9 @@
 <body>
 
 <div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Purchase History</h2>
-        <a href="{% url 'home' %}" class="btn btn-outline-primary">Back to Home</a>
+    <div class="d-flex justify-content-between align-items-center mb-4" style="background-color: rgba(17, 17, 17, 0.5); backdrop-filter: blur(10px);">
+        <h2 style="color: #ffc107;">Purchase History</h2>
+        <a href="{% url 'home' %}" class="btn btn-outline-primary" style="color: #ffc107;"><i class="fas fa-home"></i>Back to Home</a>
     </div>
 
     {% if messages %}
@@ -71,18 +75,18 @@
 
     {% if orders %}
         {% for order in orders %}
-        <div class="order-card">
+        <div class="order-card" style="background-color: rgba(255, 255, 255, 0.5); backdrop-filter: blur(10px);">
             <div class="order-header">
                 <div class="d-flex justify-content-between align-items-center">
-                    <div>
+                    <div style="color: #0c0c0c;">
                         <h5 class="mb-0">Order #{{ order.id }}</h5>
-                        <small class="text-muted">{{ order.order_date|date:"F d, Y H:i" }}</small>
+                        <small class="text-muted" style="color: #000000;">{{ order.order_date|date:"F d, Y H:i" }}</small>
                     </div>
-                    <div>
-                        <span class="badge bg-{{ order.status|lower }}">{{ order.status|title }}</span>
-                        {% if order.status == 'completed' %}
+                    <div style="color: #0c0c0c;">
+                        <span class="badge bg-{{ order.status|lower }}" style="color: #0c0c0c;">{{ order.status|title }}</span>
+                        {% if order.status == 'paid' or order.status == 'delivered' %}
                             <a href="{% url 'download_invoice' order.id %}" class="btn btn-sm btn-outline-secondary ms-2">
-                                <i class="fas fa-download"></i> Invoice
+                                <i class="fas fa-download" style="color: #0c0c0c;"></i> Invoice
                             </a>
                         {% endif %}
                     </div>
@@ -105,7 +109,7 @@
                             <tr>
                                 <td>
                                     {% if item.product_exists and item.product %}
-                                        <a href="{% url 'product_detail' item.product.id %}">{{ item.product_name }}</a>
+                                        <a href="{% url 'product_detail' item.product.id %}" style="color: #0c0c0c;">{{ item.product_name }}</a>
                                     {% else %}
                                         {{ item.product_name }}
                                         <small class="text-muted">(Product no longer available)</small>

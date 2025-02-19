@@ -1,0 +1,99 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delivery History</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .order-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status-badge {
+            font-size: 0.85rem;
+            padding: 5px 10px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2>My Delivery History</h2>
+            <a href="{% url 'delivery_dashboard' %}" class="btn btn-primary">Back to Dashboard</a>
+        </div>
+
+        {% if messages %}
+        <div class="messages mb-4">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="row">
+            <div class="col-12">
+                {% for assignment in assigned_orders %}
+                <div class="order-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">Order #{{ assignment.order.id }}</h5>
+                        <span class="badge bg-{{ assignment.delivery_status }} status-badge">
+                            {{ assignment.get_delivery_status_display }}
+                        </span>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Customer:</strong> {{ assignment.order.customer.name }}</p>
+                            <p><strong>Address:</strong> {{ assignment.order.customer.address }}</p>
+                            <p><strong>Phone:</strong> {{ assignment.order.customer.phone }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Assigned Date:</strong> {{ assignment.assigned_date|date:"F d, Y H:i" }}</p>
+                            <p><strong>Order Amount:</strong> ₹{{ assignment.order.total_amount }}</p>
+                            {% if assignment.delivery_notes %}
+                            <p><strong>Delivery Notes:</strong> {{ assignment.delivery_notes }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <h6>Order Items:</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Quantity</th>
+                                        <th>Price</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in assignment.order.items.all %}
+                                    <tr>
+                                        <td>{{ item.product_name }}</td>
+                                        <td>{{ item.quantity }}</td>
+                                        <td>₹{{ item.price }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="alert alert-info">
+                    No delivery history found.
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
