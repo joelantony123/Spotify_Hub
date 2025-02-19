@@ -22,14 +22,14 @@
 
     <style>
       body {
-        background-image: url("{% static 'assets/images/@hero-bg.jpg' %}");
+        background-image: url("{% static 'assets/images/hero-bg.jpg' %}");
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
       }
       .edit-profile-section {
         padding: 100px 0;
-        background-color: #222831;
+        background-color: #ffffff;
         color: #ffffff;
       }
       .edit-profile-container {
@@ -64,16 +64,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Home</title>
 
-    <!-- <h1>Welcome, {{ customer.name }}!</h1>
-    <p>Email: {{ customer.email }}</p>
-    <p>Phone: {{ customer.phone }}</p>
-    <p>Address: {{ customer.address }}</p>
-
-     Logout Button -->
-    <!-- <form method="post" action="{% url 'logout' %}">
-      {% csrf_token %}
-      <button type="submit">Logout</button> -->
-    <!-- </form>  -->
 
     <!-- Basic -->
     <meta charset="utf-8" />
@@ -130,13 +120,13 @@
       <div class="bg-box">
         <img src="{% static 'assets/images/@hero-bg.jpg' %}" alt="" />
       </div>
-    <div class="hero_area">
+    <div class="hero_area" style="background-color: rgba(12, 12, 12, 0.5)">
       <!-- header section starts -->
-      <header class="header_section">
-        <div class="container">
+      <header class="header_section" >
+        <div class="container" style="color: #ffbe33;">
           <nav class="navbar navbar-expand-lg custom_nav-container">
             <a class="navbar-brand" href="{% url 'home' %}">
-                <span> Spotify Hub </span>
+                <span style="color: #ffbe33;"> Spotify Hub </span>
               </a>
   
               <button
@@ -151,29 +141,27 @@
                 <span class=""> </span>
               </button>
   
-              <div class="collapse navbar-collapse" id="navbarSupportedContent">
+              <div class="collapse navbar-collapse" id="navbarSupportedContent" style="color: #ffbe33;">
                 <ul class="navbar-nav mx-auto">
                   <li class="nav-item active">
-                    <a class="nav-link" href="#"
-                      >Home <span class="sr-only">(current)</span></a
-                    >
+                    <a class="nav-link" href="#" style="color: #ffbe33;">Home <span class="sr-only">(current)</span></a>
                   </li>
                   <li class="nav-item">
-                    <a class="nav-link" href="#categories-section">Categories</a>
+                    <a class="nav-link" href="#categories-section" style="color: #ffbe33;">Categories</a>
                   </li>
                   <li class="nav-item">
-                    <a class="nav-link" href="#about">About</a>
+                    <a class="nav-link" href="#about" style="color: #ffbe33;">About</a>
                   </li>
                   <li class="nav-item">
-                    <a class="nav-link" href="#contact">Contact</a>
+                    <a class="nav-link" href="#contact" style="color: #ffbe33;">Contact</a>
                   </li>
                   <li class="nav-item dropdown">
-                      <a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                      <a class="nav-link dropdown-toggle" href="#" id="profileDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="color: #ffbe33;">
                           Profile
                       </a>
                       <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
                           <li><a class="dropdown-item" href="{% url 'edit_profile'  %}">
-                              <strong></strong> Edit Profile
+                              <strong ></strong> Edit Profile
                           </a></li>
                           <li><hr class="dropdown-divider"></li>
                           <li><a class="dropdown-item" href="#">
@@ -191,59 +179,20 @@
                       </ul>
                   </li>
                   <li class="nav-item">
-                      <a class="nav-link" href="{% url 'logout' %}">Logout</a>
+                      <a class="nav-link" href="{% url 'logout' %}" style="color: #ffbe33;">Logout</a>
+                  </li>
+                  <li class="nav-item">
+                    <a class="nav-link" href="{% url 'home' %}">
+                        <button class="btn" style="background-color: #ffbe33; color: #ffffff; border: none; padding: 8px 15px; border-radius: 5px;">
+                            <i class="fa fa-home"></i> Back to Home
+                        </button>
+                    </a>
                   </li>
                 </ul>
                 <div class="user_option">
                    <a href="" class="user_link"> 
                   </a>
-                  <!-- <a class="cart_link" href="#">
-                    <svg
-                      version="1.1"
-                      id="Capa_1"
-                      xmlns="http://www.w3.org/2000/svg"
-                      xmlns:xlink="http://www.w3.org/1999/xlink"
-                      x="0px"
-                      y="0px"
-                      viewBox="0 0 456.029 456.029"
-                      style="enable-background:new 0 0 456.029 456.029;"
-                      xml:space="preserve"
-                    >
-                      <g>
-                        <g>
-                          <path
-                            d="M345.6,338.862c-29.184,0-53.248,23.552-53.248,53.248c0,29.184,23.552,53.248,53.248,53.248
-                     c29.184,0,53.248-23.552,53.248-53.248C398.336,362.926,374.784,338.862,345.6,338.862z"
-                          ></path>
-                        </g>
-                      </g>
-                      <g>
-                        <g>
-                          <path
-                            d="M439.296,84.91c-1.024,0-2.56-0.512-4.096-0.512H112.64l-5.12-34.304C104.448,27.566,84.992,10.67,61.952,10.67H20.48
-                     C9.216,10.67,0,19.886,0,31.15c0,11.264,9.216,20.48,20.48,20.48h41.472c2.56,0,4.608,2.048,5.12,4.608l31.744,216.064
-                     c4.096,27.136,27.648,47.616,55.296,47.616h212.992c26.624,0,49.664-18.944,55.296-45.056l33.28-166.4
-                     C457.728,97.71,450.56,86.958,439.296,84.91z"
-                          ></path>
-                        </g>
-                      </g>
-                      <g>
-                        <g>
-                          <path
-                            d="M215.04,389.55c-1.024-28.16-24.576-50.688-52.736-50.688c-29.696,1.536-52.224,26.112-51.2,55.296
-                     c1.024,28.16,24.064,50.688,52.224,50.688h1.024C193.536,443.31,216.576,418.734,215.04,389.55z"
-                          ></path>
-                        </g>
-                      </g>
-                    </svg>
-                  </a> -->
-                  <!-- <form class="form-inline">
-                    {% csrf_token %}
-                    <button class="btn my-2 my-sm-0 nav_search-btn" type="submit">
-                      <i class="fa fa-search" aria-hidden="true"></i>
-                    </button>
-                  </form> -->
-                  <!-- <a href="#" class="order_online"> Search </a> -->
+                  
                 </div>
               </div
           </nav>
@@ -253,34 +202,54 @@
     </div>
 
     <!-- edit profile section -->
-    <section class="edit-profile-section layout_padding">
-      <div class="container">
+    <section class="edit-profile-section layout_padding" style="background-color: rgba(255, 255, 255, 0.5); backdrop-filter: blur(5px);">
+      <div class="container" >
         <div class="row">
           <div class="col-md-8 offset-md-2">
-            <div class="edit-profile-container">
-              <h2 class="edit-profile-heading text-center">Edit Your Profile</h2>
+            <div class="edit-profile-container" style="background-color: rgba(255, 255, 255, 0.5); backdrop-filter: blur(5px);">
+              <h2 class="edit-profile-heading text-center" style="color: #050505;">Edit Your Profile</h2>
               <form action="{% url 'edit_profile' %}" method="post" id="editProfileForm">
                 {% csrf_token %}
                 <div class="form-group">
-                  <label for="name">Name</label>
+                  <label for="name" style="color: #000000;">Name</label>
                   <input type="text" class="form-control" id="name" name="name" value="{{ customer.name }}" required minlength="2">
                   <div class="error-message" id="nameError"></div>
                 </div>
                 <div class="form-group">
-                  <label for="email">Email</label>
+                  <label for="email" style="color: #000000;">Email</label>
                   <input type="email" class="form-control" id="email" name="email" value="{{ customer.email }}" required>
                   <div class="error-message" id="emailError"></div>
                 </div>
                 <div class="form-group">
-                  <label for="phone">Phone</label>
+                  <label for="phone" style="color: #000000;">Phone</label>
                   <input type="tel" class="form-control" id="phone" name="phone" value="{{ customer.phone }}" required pattern="^\+?1?\d{9,15}$">
                   <div class="error-message" id="phoneError"></div>
                 </div>
                 <div class="form-group">
-                  <label for="address">Address</label>
+                  <label for="address" style="color: #000000;">Address</label>
                   <textarea class="form-control" id="address" name="address" rows="3" required minlength="5">{{ customer.address }}</textarea>
                   <div class="error-message" id="addressError"></div>
                 </div>
+                <div class="form-group">
+                  <label for="address" style="color: #000000;">Address</label>
+                  <textarea class="form-control" id="address" name="address" rows="3" required minlength="5">{{ customer.address }}</textarea>
+                  <div class="error-message" id="addressError"></div>
+                </div>
+                <div class="form-group">
+                    <label for="pincode">Pincode</label>
+                    <input type="text" 
+                           class="form-control" 
+                           id="pincode" 
+                           name="pincode" 
+                           value="{{ customer.pincode }}"
+                           pattern="[0-9]{6}" 
+                           maxlength="6" 
+                           title="Please enter a valid 6-digit pincode"
+                           oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6)"
+                           required>
+                    <div class="error-message" id="pincodeError"></div>
+                </div>
+
                 <div class="text-center">
                   <button type="submit" class="btn btn-submit">Save Changes</button>
                 </div>
@@ -344,6 +313,15 @@
                 isValid = false;
               } else {
                 document.getElementById('addressError').textContent = "";
+              }
+      
+              // Pincode validation
+              const pincode = document.getElementById('pincode');
+              if (!pincode.value.match(/^[0-9]{6}$/)) {
+                document.getElementById('pincodeError').textContent = "Please enter a valid 6-digit pincode.";
+                isValid = false;
+              } else {
+                document.getElementById('pincodeError').textContent = "";
               }
       
               if (!isValid) {

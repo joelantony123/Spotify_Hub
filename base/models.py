@@ -14,6 +14,7 @@ class Customer(models.Model):
     password = models.CharField(max_length=128)
     phone = models.CharField(max_length=15,null=True)
     address = models.TextField(null=True)
+    pincode = models.CharField(max_length=6, null=True)
     reset_password_token = models.CharField(max_length=100, null=True, blank=True)
     reset_password_expires = models.DateTimeField(null=True, blank=True)
     user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES, default='customer')
@@ -74,7 +75,9 @@ class Order(models.Model):
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=[
         ('pending', 'Pending'),
-        ('completed', 'Completed'),
+        ('assigned', 'Assigned'),
+        ('shipped', 'Shipped'),
+        ('delivered', 'Delivered'),
         ('cancelled', 'Cancelled')
     ], default='pending')
     payment_id = models.CharField(max_length=100, null=True, blank=True)
@@ -127,6 +130,46 @@ class ChatMessage(models.Model):
 
     def __str__(self):
         return f'From {self.sender.name} to {self.receiver.name} at {self.timestamp}'
+
+class DeliveryBoy(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending Approval'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected')
+    ]
+    
+    user = models.OneToOneField(Customer, on_delete=models.CASCADE)
+    vehicle_number = models.CharField(max_length=20, null=True, blank=True)
+    license_number = models.CharField(max_length=20)
+    is_available = models.BooleanField(default=True)
+    current_location = models.CharField(max_length=200, null=True, blank=True)
+    pincode = models.CharField(max_length=6)
+    rating = models.DecimalField(max_digits=3, decimal_places=2, default=5.00)
+    total_deliveries = models.IntegerField(default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+
+    def __str__(self):
+        return f"Delivery Boy: {self.user.name}"
+
+class OrderAssigned(models.Model):
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='assigned_delivery')
+    delivery_boy = models.ForeignKey(DeliveryBoy, on_delete=models.SET_NULL, null=True)
+    assigned_date = models.DateTimeField(auto_now_add=True)
+    delivery_status = models.CharField(max_length=20, choices=[
+        ('pending', 'Pending'),
+        ('picked_up', 'Picked Up'),
+        ('in_transit', 'In Transit'),
+        ('delivered', 'Delivered'),
+        ('failed', 'Failed')
+    ], default='pending')
+    delivery_notes = models.TextField(blank=True, null=True)
+    estimated_delivery_time = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-assigned_date']
+
+    def __str__(self):
+        return f"Order #{self.order.id} - {self.delivery_status}"
 
 
 

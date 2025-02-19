@@ -1,0 +1,20 @@
+{% if delivery_boys %}
+<div class="list-group">
+    {% for delivery_boy in delivery_boys %}
+    <div class="list-group-item d-flex justify-content-between align-items-center">
+        <div>
+            <h6 class="mb-0">{{ delivery_boy.user.name }}</h6>
+            <small>Vehicle: {{ delivery_boy.vehicle_number }}</small>
+        </div>
+        <button class="btn btn-success btn-sm assign-to-delivery-boy" 
+                data-delivery-boy-id="{{ delivery_boy.id }}">
+            Assign
+        </button>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-warning">
+    No available delivery partners found in this pincode area.
+</div>
+{% endif %}

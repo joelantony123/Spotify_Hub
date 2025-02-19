@@ -4,7 +4,7 @@ from django.http import HttpResponse,request
 from django.contrib.auth import authenticate, login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import make_password, check_password
-from .models import Customer,Product,Cart,CartItem,Order,OrderItem
+from .models import Customer,Product,Cart,CartItem,Order,OrderItem,DeliveryBoy,OrderAssigned
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST,require_http_methods
 from django.contrib.auth.decorators import user_passes_test
@@ -42,8 +42,16 @@ from .models import ChatMessage
 from .chatbot import get_chatbot_response
 from django.db.models import Q
 import google.generativeai as genai
+from .models import Order, DeliveryBoy, OrderAssigned
+from django.db.models import Q
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
+
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from django.views.decorators.cache import never_cache
+from .models import Customer, Order, DeliveryBoy, OrderAssigned
+import logging
 
 logger = logging.getLogger(__name__)
 
@@ -326,35 +334,32 @@ def product_admin(request):
 
 @never_cache
 def edit_profile(request):
-    customer_id = request.session.get('customer_id')
-    if not customer_id:
+    if not request.session.get('customer_id'):
         return redirect('login')
-
-    try:
-        customer = Customer.objects.get(customer_id=customer_id)
-    except Customer.DoesNotExist:
-        messages.error(request, "Customer not found.")
-        return redirect('home')
-
+    
+    customer = Customer.objects.get(customer_id=request.session['customer_id'])
+    
     if request.method == 'POST':
-        # Handle form submission
-        customer.name = request.POST.get('name')
-        customer.email = request.POST.get('email')
-        customer.phone = request.POST.get('phone')
-        customer.address = request.POST.get('address')
-
-        try:
-            customer.save()
-            messages.success(request, "Profile updated successfully.")
-            return redirect('home')  # or wherever you want to redirect after successful update
-        except Exception as e:
-            messages.error(request, f"An error occurred while updating your profile: {str(e)}")
-
-    # If it's a GET request or if there was an error in POST, render the form with existing data
-    context = {
-        'customer': customer
-    }
-    return render(request, 'edit_profile.html', context)
+        # Validate pincode
+        pincode = request.POST.get('pincode')
+        if not pincode.isdigit() or len(pincode) != 6:
+            messages.error(request, 'Pincode must be exactly 6 digits')
+            return redirect('edit_profile')
+            
+        customer.name = request.POST['name']
+        customer.email = request.POST['email']
+        customer.phone = request.POST['phone']
+        customer.address = request.POST['address']
+        customer.pincode = pincode
+        
+        if request.POST.get('new_password'):
+            customer.set_password(request.POST['new_password'])
+        
+        customer.save()
+        messages.success(request, 'Profile updated successfully!')
+        return redirect('home')
+    
+    return render(request, 'edit_profile.html', {'customer': customer})
 
 import logging
 from django.shortcuts import render, redirect, get_object_or_404
@@ -858,7 +863,7 @@ def payment_success(request):
             order = Order.objects.create(
                 customer=customer,  # Changed from user to customer
                 total_amount=total_amount,
-                status='completed',
+                status='paid',
                 payment_id=session.payment_intent
             )
             
@@ -897,7 +902,7 @@ def stripe_webhook(request):
             payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
         )
 
-        if event['type'] == 'checkout.session.completed':
+        if event['type'] == 'checkout.session.paid':
             session = event['data']['object']
             customer_id = session['metadata']['customer_id']
             
@@ -977,91 +982,81 @@ def purchase_history(request):
 @never_cache
 def download_invoice(request, order_id):
     try:
-        # Get the order and verify it belongs to the current customer
-        customer_id = request.session.get('customer_id')
-        order = Order.objects.get(id=order_id, customer__customer_id=customer_id)
+        # Get the order and verify it belongs to the current user
+        order = Order.objects.select_related('customer').get(
+            id=order_id,
+            customer__customer_id=request.session.get('customer_id')
+        )
         
-        # Create a file-like buffer to receive PDF data
+        # Verify order is paid or delivered (using lowercase status values)
+        if order.status not in ['paid', 'delivered']:
+            logger.warning(f"Attempted to download invoice for non-paid order {order_id} with status {order.status}")
+            messages.error(request, "Invoice is only available for paid orders")
+            return redirect('purchase_history')
+            
+        # Create the PDF buffer
         buffer = BytesIO()
-        
-        # Create the PDF object, using the buffer as its "file."
         p = canvas.Canvas(buffer, pagesize=letter)
         
-        # Draw things on the PDF
+        # Add logging for debugging
+        logger.info(f"Generating invoice for order {order_id}")
+        
         # Header
         p.setFont("Helvetica-Bold", 24)
-        p.drawString(50, 750, "Invoice")
+        p.drawString(50, 750, "INVOICE")
         
-        # Company info
+        # Order details
         p.setFont("Helvetica", 12)
-        p.drawString(50, 720, "Sports Hub")
-        p.drawString(50, 705, "123 Sports Street")
-        p.drawString(50, 690, "Phone: (123) 456-7890")
+        p.drawString(50, 720, f"Order #: {order.id}")
+        p.drawString(50, 700, f"Date: {order.order_date.strftime('%Y-%m-%d')}")
+        p.drawString(50, 680, f"Customer: {order.customer.name}")
         
-        # Customer info
-        p.drawString(50, 650, f"Bill To:")
-        p.drawString(50, 635, f"Name: {order.customer.name}")
-        p.drawString(50, 620, f"Email: {order.customer.email}")
-        p.drawString(50, 605, f"Address: {order.customer.address}")
+        # Items table
+        y = 620
+        p.drawString(50, y, "Item")
+        p.drawString(300, y, "Quantity")
+        p.drawString(400, y, "Price")
+        p.drawString(500, y, "Total")
         
-        # Order info
-        p.drawString(50, 575, f"Order ID: #{order.id}")
-        p.drawString(50, 560, f"Order Date: {order.order_date.strftime('%B %d, %Y')}")
-        p.drawString(50, 545, f"Payment ID: {order.payment_id}")
+        y -= 20
+        p.line(50, y, 550, y)
+        y -= 20
         
-        # Table header
-        p.setFont("Helvetica-Bold", 12)
-        p.drawString(50, 500, "Item")
-        p.drawString(300, 500, "Quantity")
-        p.drawString(400, 500, "Price")
-        p.drawString(500, 500, "Total")
-        
-        # Table content
-        y = 480
-        p.setFont("Helvetica", 12)
+        # Add items
         for item in order.items.all():
-            p.drawString(50, y, item.product_name)
+            p.drawString(50, y, item.product_name[:40])
             p.drawString(300, y, str(item.quantity))
-            p.drawString(400, y, f"Rs.{item.price}")
-            item_total = item.price * Decimal(str(item.quantity))
-            p.drawString(500, y, f"Rs.{item_total}")
+            p.drawString(400, y, f"₹{item.price}")
+            total = item.price * item.quantity
+            p.drawString(500, y, f"₹{total}")
             y -= 20
         
-        # Calculate totals using Decimal
-        subtotal = order.total_amount
-        tax_rate = Decimal('0.10')
-        tax_amount = subtotal * tax_rate
-        total = subtotal + tax_amount
-        
-        # Draw totals
-        p.line(50, y-10, 550, y-10)
+        # Total
+        y -= 20
+        p.line(50, y, 550, y)
+        y -= 20
         p.setFont("Helvetica-Bold", 12)
-        p.drawString(400, y-30, "Subtotal:")
-        p.drawString(500, y-30, f"Rs.{subtotal:.2f}")
-        p.drawString(400, y-50, "Tax (10%):")
-        p.drawString(500, y-50, f"Rs.{tax_amount:.2f}")
-        p.drawString(400, y-70, "Total:")
-        p.drawString(500, y-70, f"Rs.{total:.2f}")
+        p.drawString(400, y, "Total:")
+        p.drawString(500, y, f"₹{order.total_amount}")
         
         # Footer
         p.setFont("Helvetica", 10)
         p.drawString(50, 50, "Thank you for your purchase!")
         
-        # Close the PDF object cleanly
         p.showPage()
         p.save()
         
-        # FileResponse sets the Content-Disposition header so that browsers
-        # present the option to save the file.
         buffer.seek(0)
+        logger.info(f"Successfully generated invoice for order {order_id}")
         return FileResponse(buffer, as_attachment=True, filename=f'invoice_{order.id}.pdf')
     
     except Order.DoesNotExist:
+        logger.error(f"Order {order_id} not found or unauthorized access")
         messages.error(request, "Order not found or unauthorized access")
         return redirect('purchase_history')
     except Exception as e:
-        logger.error(f"Error generating invoice: {str(e)}")
-        messages.error(request, "Error generating invoice")
+        logger.error(f"Error generating invoice for order {order_id}: {str(e)}")
+        messages.error(request, f"Error generating invoice: {str(e)}")
         return redirect('purchase_history')
 
 @never_cache
@@ -1110,7 +1105,7 @@ def product_detail(request, product_id):
             has_purchased = OrderItem.objects.filter(
                 order__customer=customer,
                 product_name=product.name,
-                order__status='completed'
+                order__status='paid'
             ).exists()
             
             # Check if user hasn't already reviewed
@@ -1151,7 +1146,7 @@ def add_review(request, product_id):
         has_purchased = OrderItem.objects.filter(
             order__customer=customer,
             product=product,
-            order__status='completed'
+            order__status='paid'
         ).exists()
         
         if not has_purchased:
@@ -1629,3 +1624,480 @@ def gemini_chat(request):
         'status': 'error',
         'message': 'Invalid request method'
     }, status=405)
+
+@never_cache
+def delivery_dashboard(request):
+    if not request.session.get('is_delivery_boy'):
+        messages.error(request, 'Please login as a delivery partner.')
+        return redirect('delivery_login')
+        
+    try:
+        customer = Customer.objects.get(customer_id=request.session.get('customer_id'))
+        delivery_boy = DeliveryBoy.objects.get(user=customer)
+        
+        if delivery_boy.status != 'approved':
+            messages.error(request, 'Your account is not approved yet.')
+            return redirect('delivery_login')
+            
+        # Get orders through OrderAssigned
+        assigned_orders = Order.objects.filter(
+            assigned_delivery__delivery_boy=delivery_boy,
+            assigned_delivery__delivery_status__in=['pending', 'picked_up', 'in_transit']
+        ).order_by('-order_date')
+        
+        context = {
+            'delivery_boy': delivery_boy,
+            'assigned_orders': assigned_orders
+        }
+        return render(request, 'delivery_dashboard.html', context)
+    except (Customer.DoesNotExist, DeliveryBoy.DoesNotExist):
+        messages.error(request, 'Delivery account not found.')
+        return redirect('delivery_login')
+
+@require_POST
+def update_delivery_status(request):
+    try:
+        order_id = request.POST.get('order_id')
+        new_status = request.POST.get('status')
+        
+        order = Order.objects.get(id=order_id)
+        order_assignment = OrderAssigned.objects.get(order=order)
+        
+        # Update OrderAssigned status
+        order_assignment.delivery_status = new_status
+        order_assignment.save()
+        
+        # Update Order status based on delivery status
+        if new_status == 'accepted':
+            order.status = 'shipped'
+        elif new_status == 'delivered':
+            order.status = 'delivered'
+        
+        order.save()
+        
+        return JsonResponse({'status': 'success'})
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        })
+
+@require_POST
+def update_availability(request):
+    available = request.POST.get('available') == 'true'
+    try:
+        delivery_boy = DeliveryBoy.objects.get(user=request.user)
+        delivery_boy.is_available = available
+        delivery_boy.save()
+        return JsonResponse({'status': 'success'})
+    except DeliveryBoy.DoesNotExist:
+        return JsonResponse({'status': 'error'}, status=404)
+
+def delivery_register(request):
+    if request.method == 'POST':
+        try:
+            # Get form data
+            name = request.POST.get('name')
+            email = request.POST.get('email')
+            phone = request.POST.get('phone')
+            address = request.POST.get('address')
+            pincode = request.POST.get('pincode')
+            vehicle_number = request.POST.get('vehicle_number')
+            license_number = request.POST.get('license_number')
+            password = request.POST.get('password')
+            
+            # Validate pincode
+            if not pincode.isdigit() or len(pincode) != 6:
+                messages.error(request, 'Pincode must be exactly 6 digits')
+                return redirect('delivery_register')
+            
+            # Create customer
+            customer = Customer.objects.create(
+                name=name,
+                email=email,
+                phone=phone,
+                address=address,
+                user_type='delivery_boy'
+            )
+            customer.set_password(password)
+            customer.save()
+            
+            # Create delivery boy with validated pincode
+            delivery_boy = DeliveryBoy.objects.create(
+                user=customer,
+                vehicle_number=vehicle_number,
+                license_number=license_number,
+                pincode=pincode
+            )
+            
+            messages.success(request, 'Registration successful! Please wait for admin approval.')
+            return redirect('delivery_login')
+            
+        except Exception as e:
+            messages.error(request, f'Registration failed: {str(e)}')
+            return redirect('delivery_register')
+            
+    return render(request, 'delivery_register.html')
+
+@require_POST
+def approve_delivery_boy(request, delivery_boy_id):
+    try:
+        delivery_boy = DeliveryBoy.objects.get(id=delivery_boy_id)
+        action = request.POST.get('action')
+        
+        if action == 'approve':
+            delivery_boy.status = 'approved'
+        elif action == 'reject':
+            delivery_boy.status = 'rejected'
+        
+        delivery_boy.save()
+        
+        # Send email notification to delivery boy
+        subject = f'Your delivery partner application has been {action}d'
+        message = f'Hello {delivery_boy.user.name},\n\nYour application to be a delivery partner has been {action}d.'
+        from_email = settings.DEFAULT_FROM_EMAIL
+        recipient_list = [delivery_boy.user.email]
+        
+        try:
+            send_mail(subject, message, from_email, recipient_list)
+        except Exception as e:
+            # Log the error but don't stop the process
+            print(f"Error sending email: {str(e)}")
+        
+        return JsonResponse({'status': 'success'})
+    except DeliveryBoy.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Delivery boy not found'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})
+
+@never_cache
+def delivery_applications(request):
+    if not request.session.get('customer_id'):
+        return redirect('login')
+        
+    try:
+        admin_user = Customer.objects.get(customer_id=request.session.get('customer_id'))
+        if admin_user.user_type != 'admin':
+            messages.error(request, 'Unauthorized access')
+            return redirect('home')
+            
+        pending_applications = DeliveryBoy.objects.filter(status='pending').select_related('user')
+        approved_applications = DeliveryBoy.objects.filter(status='approved').select_related('user')
+        
+        context = {
+            'pending_applications': pending_applications,
+            'approved_applications': approved_applications
+        }
+        return render(request, 'manage_application.html', context)
+    except Customer.DoesNotExist:
+        return redirect('login')
+    except Exception as e:
+        messages.error(request, f'Error loading applications: {str(e)}')
+        return redirect('admin_dashboard')
+
+@never_cache
+def delivery_login(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        
+        try:
+            customer = Customer.objects.get(email=email)
+            
+            # Check if the customer has a delivery boy profile
+            try:
+                delivery_boy = DeliveryBoy.objects.get(user=customer)
+            except DeliveryBoy.DoesNotExist:
+                messages.error(request, 'No delivery account found for this email.')
+                return redirect('delivery_login')
+            
+            # Verify password using check_password method
+            if check_password(password, customer.password):
+                # Check delivery boy status
+                if delivery_boy.status == 'pending':
+                    messages.error(request, 'Your account is pending approval.')
+                    return redirect('delivery_login')
+                elif delivery_boy.status == 'rejected':
+                    messages.error(request, 'Your account has been rejected.')
+                    return redirect('delivery_login')
+                
+                # Set session data
+                request.session['customer_id'] = customer.customer_id
+                request.session['is_authenticated'] = True
+                request.session['is_delivery_boy'] = True
+                request.session['customer_email'] = customer.email
+                request.session['customer_name'] = customer.name
+                
+                messages.success(request, f'Welcome back, {customer.name}!')
+                return redirect('delivery_dashboard')
+            else:
+                messages.error(request, 'Invalid email or password.')
+        except Customer.DoesNotExist:
+            messages.error(request, 'Invalid email or password.')
+    
+    return render(request, 'delivery_login.html')
+
+@never_cache
+def delivery_profile(request):
+    if not request.session.get('is_delivery_boy'):
+        messages.error(request, 'Please login as a delivery partner.')
+        return redirect('delivery_login')
+        
+    try:
+        customer = Customer.objects.get(customer_id=request.session.get('customer_id'))
+        delivery_boy = DeliveryBoy.objects.get(user=customer)
+        
+        context = {
+            'delivery_boy': delivery_boy,
+            'customer': customer
+        }
+        return render(request, 'delivery_profile.html', context)
+    except (Customer.DoesNotExist, DeliveryBoy.DoesNotExist):
+        messages.error(request, 'Profile not found.')
+        return redirect('delivery_login')
+
+@never_cache
+def delivery_profile_edit(request):
+    if not request.session.get('is_delivery_boy'):
+        messages.error(request, 'Please login as a delivery partner.')
+        return redirect('delivery_login')
+        
+    try:
+        customer = Customer.objects.get(customer_id=request.session.get('customer_id'))
+        delivery_boy = DeliveryBoy.objects.get(user=customer)
+        
+        if request.method == 'POST':
+            # Update customer info
+            customer.name = request.POST.get('name')
+            customer.phone = request.POST.get('phone')
+            customer.address = request.POST.get('address')
+            
+            # Update delivery boy info
+            delivery_boy.vehicle_number = request.POST.get('vehicle_number')
+            delivery_boy.license_number = request.POST.get('license_number')
+            delivery_boy.pincode = request.POST.get('pincode')
+            
+            # Handle password change
+            new_password = request.POST.get('new_password')
+            if new_password:
+                customer.password = make_password(new_password)
+            
+            customer.save()
+            delivery_boy.save()
+            messages.success(request, 'Profile updated successfully!')
+            return redirect('delivery_profile')
+            
+        context = {
+            'delivery_boy': delivery_boy,
+            'customer': customer
+        }
+        return render(request, 'delivery_profile_edit.html', context)
+    except (Customer.DoesNotExist, DeliveryBoy.DoesNotExist):
+        messages.error(request, 'Profile not found.')
+        return redirect('delivery_login')
+
+@never_cache
+def work_assign(request):
+    # Check if user is logged in
+    customer_id = request.session.get('customer_id')
+    if not customer_id:
+        messages.error(request, 'Please login to access this page')
+        return redirect('login')
+    
+    try:
+        # Get the user and verify they are an admin
+        customer = Customer.objects.get(customer_id=customer_id)
+        
+        # Strict admin check
+        if customer.user_type != 'admin':
+            messages.error(request, 'Access denied. Admin privileges required.')
+            
+            # Redirect based on user type
+            if customer.user_type == 'delivery_boy':
+                return redirect('delivery_dashboard')
+            else:
+                return redirect('home')
+        
+        # Admin-only code starts here
+        pending_orders = Order.objects.filter(
+            status='paid'
+        ).select_related(
+            'customer'
+        ).prefetch_related(
+            'items'
+        ).exclude(
+            id__in=OrderAssigned.objects.values('order_id')
+        ).order_by('-order_date')
+        
+        delivery_boys = DeliveryBoy.objects.filter(
+            status='approved',
+            is_available=True
+        ).select_related('user')
+        
+        assigned_orders = OrderAssigned.objects.filter(
+            delivery_status__in=['pending', 'picked_up', 'in_transit']
+        ).select_related(
+            'order',
+            'order__customer',
+            'delivery_boy',
+            'delivery_boy__user'
+        ).order_by('-assigned_date')
+        
+        context = {
+            'pending_orders': pending_orders,
+            'delivery_boys': delivery_boys,
+            'assigned_orders': assigned_orders,
+            'is_admin': True,
+            'current_customer': customer  # Changed from admin_user to customer
+        }
+        
+        return render(request, 'Work_assign.html', context)
+        
+    except Customer.DoesNotExist:
+        messages.error(request, 'User account not found')
+        return redirect('login')
+    except Exception as e:
+        logger.error(f"Error in work assign view: {str(e)}")
+        messages.error(request, 'An error occurred while loading the page')
+        return redirect('work_assign')
+
+@csrf_exempt
+def assign_delivery_boy(request):
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+    
+    # Check if user is admin
+    customer_id = request.session.get('customer_id')
+    if not customer_id:
+        return JsonResponse({'status': 'error', 'message': 'Please login first'})
+        
+    try:
+        admin_user = Customer.objects.get(customer_id=customer_id)
+        if admin_user.user_type != 'admin':
+            return JsonResponse({'status': 'error', 'message': 'Unauthorized access'})
+            
+        order_id = request.POST.get('order_id')
+        delivery_boy_id = request.POST.get('delivery_boy_id')
+
+        # Validate input
+        if not order_id or not delivery_boy_id:
+            return JsonResponse({'status': 'error', 'message': 'Missing required parameters'})
+
+        # Get order and delivery boy
+        order = Order.objects.get(id=order_id, status='paid')
+        delivery_boy = DeliveryBoy.objects.get(id=delivery_boy_id, is_available=True)
+
+        # Verify pincode match
+        if order.customer.pincode != delivery_boy.pincode:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Delivery partner pincode does not match order location'
+            })
+
+        # Create assignment
+        OrderAssigned.objects.create(
+            order=order,
+            delivery_boy=delivery_boy,
+            delivery_status='pending'
+        )
+
+        # Update order status
+        order.status = 'assigned'
+        order.save()
+
+        # Update delivery boy availability
+        delivery_boy.is_available = False
+        delivery_boy.total_deliveries += 1
+        delivery_boy.save()
+
+        return JsonResponse({'status': 'success'})
+
+    except Customer.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'User not found'})
+    except Order.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Order not found or already assigned'})
+    except DeliveryBoy.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'Delivery partner not found or unavailable'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})
+
+@never_cache
+def view_assigned_history(request):
+    # Check if delivery boy is logged in
+    customer_id = request.session.get('customer_id')
+    if not customer_id:
+        messages.error(request, 'Please login first')
+        return redirect('delivery_login')
+        
+    try:
+        # Get the delivery boy's details
+        customer = Customer.objects.get(customer_id=customer_id)
+        delivery_boy = DeliveryBoy.objects.get(user=customer)
+        
+        # Get all orders assigned to this delivery boy
+        assigned_orders = OrderAssigned.objects.filter(
+            delivery_boy=delivery_boy
+        ).select_related(
+            'order',
+            'order__customer'
+        ).prefetch_related(
+            'order__items'
+        ).order_by('-assigned_date')
+        
+        context = {
+            'delivery_boy': delivery_boy,
+            'assigned_orders': assigned_orders,
+            'customer': customer
+        }
+        
+        return render(request, 'view_assigned_History.html', context)
+        
+    except Customer.DoesNotExist:
+        messages.error(request, 'Customer account not found')
+        return redirect('delivery_login')
+    except DeliveryBoy.DoesNotExist:
+        messages.error(request, 'Delivery boy account not found')
+        return redirect('delivery_login')
+    except Exception as e:
+        messages.error(request, f'Error: {str(e)}')
+        return redirect('delivery_login')
+
+@never_cache
+def assign_deliveries(request):
+    customer_id = request.session.get('customer_id')
+    if not customer_id:
+        return redirect('login')
+        
+    try:
+        admin_user = Customer.objects.get(customer_id=customer_id)
+        if admin_user.user_type != 'admin':
+            messages.error(request, 'Unauthorized access.')
+            return redirect('login')
+        
+        # Get pending orders that need assignment
+        pending_orders = Order.objects.filter(status='paid').select_related('customer')
+        
+        # Get all available delivery boys
+        delivery_boys = DeliveryBoy.objects.filter(is_available=True).select_related('user')
+        
+        # Get assigned orders
+        assigned_orders = OrderAssigned.objects.filter(
+            delivery_status__in=['pending', 'picked', 'delivered']
+        ).select_related('order', 'delivery_boy', 'order__customer', 'delivery_boy__user')
+        
+        context = {
+            'pending_orders': pending_orders,
+            'delivery_boys': delivery_boys,
+            'assigned_orders': assigned_orders,
+            'current_customer': admin_user
+        }
+        
+        return render(request, 'Work_assign.html', context)
+        
+    except Customer.DoesNotExist:
+        return redirect('login')
+    except Exception as e:
+        logger.error(f"Error in assign deliveries page: {str(e)}")
+        messages.error(request, "An error occurred while loading the assign deliveries page")
+        return redirect('admin_dashboard')
+    

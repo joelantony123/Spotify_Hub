@@ -36,4 +36,17 @@ urlpatterns = [
     path('search-products/', views.search_products, name='search_products'),
     path('filter-products/', views.filter_products, name='filter_products'),
     path('gemini_chat/', views.gemini_chat, name='gemini_chat'),
+    path('delivery-dashboard/', views.delivery_dashboard, name='delivery_dashboard'),
+    path('update-delivery-status/', views.update_delivery_status, name='update_delivery_status'),
+    path('update-availability/', views.update_availability, name='update_availability'),
+    path('delivery/register/', views.delivery_register, name='delivery_register'),
+    path('delivery/login/', views.delivery_login, name='delivery_login'),
+    path('delivery/applications/', views.delivery_applications, name='delivery_applications'),
+    path('delivery/approve/<int:delivery_boy_id>/', views.approve_delivery_boy, name='approve_delivery_boy'),
+    path('delivery/profile/', views.delivery_profile, name='delivery_profile'),
+    path('delivery/profile/edit/', views.delivery_profile_edit, name='delivery_profile_edit'),
+    path('work-assign/', views.work_assign, name='work_assign'),  # Changed from work_assign_view to work_assign
+    path('assign-delivery-boy/', views.assign_delivery_boy, name='assign_delivery_boy'),
+    path('delivery/history/', views.view_assigned_history, name='view_assigned_history'),
+    path('admin/assign-deliveries/', views.assign_deliveries, name='assign_deliveries'),
 ]
