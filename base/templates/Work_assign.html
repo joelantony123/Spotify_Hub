@@ -18,6 +18,9 @@
         .status-badge {
             font-size: 0.85rem;
             padding: 5px 10px;
+            border-radius: 4px;
+            text-transform: capitalize;
+            font-weight: 500;
         }
         .order-items {
             margin-top: 10px;
@@ -32,6 +35,26 @@
         .modal-body {
             max-height: 400px;
             overflow-y: auto;
+        }
+        .bg-warning {
+            background-color: #ffc107 !important;
+            color: #000 !important;
+        }
+        .bg-info {
+            background-color: #0dcaf0 !important;
+            color: #000 !important;
+        }
+        .bg-primary {
+            background-color: #0d6efd !important;
+            color: #fff !important;
+        }
+        .bg-success {
+            background-color: #198754 !important;
+            color: #fff !important;
+        }
+        .bg-danger {
+            background-color: #dc3545 !important;
+            color: #fff !important;
         }
     </style>
 </head>
@@ -80,7 +103,7 @@
                                                 <td>{{ item.product_name }}</td>
                                                 <td>{{ item.quantity }}</td>
                                                 <td>₹{{ item.price }}</td>
-                                                <td>₹{{ item.price|multiply:item.quantity }}</td>
+                                                <td>₹{{ item.subtotal }}</td>
                                             </tr>
                                             {% endfor %}
                                             <tr class="table-info">
@@ -121,16 +144,23 @@
                                                 <div class="delivery-partners-list">
                                                     {% with matching_partners=0 %}
                                                     {% for boy in delivery_boys %}
-                                                        {% if boy.pincode == order.customer.pincode and boy.is_available %}
+                                                        {% if boy.pincode == order.customer.pincode %}
                                                             {% with matching_partners=matching_partners|add:1 %}
                                                             <div class="form-check mb-2">
                                                                 <input class="form-check-input delivery-boy-select" 
                                                                        type="radio" 
                                                                        name="deliveryBoy{{ order.id }}" 
                                                                        value="{{ boy.id }}"
-                                                                       id="deliveryBoy{{ order.id }}{{ boy.id }}">
-                                                                <label class="form-check-label" for="deliveryBoy{{ order.id }}{{ boy.id }}">
+                                                                       id="deliveryBoy{{ order.id }}{{ boy.id }}"
+                                                                       {% if not boy.is_available %}disabled{% endif %}>
+                                                                <label class="form-check-label {% if not boy.is_available %}text-muted{% endif %}" 
+                                                                       for="deliveryBoy{{ order.id }}{{ boy.id }}">
                                                                     <strong>{{ boy.user.name }}</strong>
+                                                                    {% if not boy.is_available %}
+                                                                        <span class="badge bg-warning">Currently Unavailable</span>
+                                                                    {% else %}
+                                                                        <span class="badge bg-success">Available</span>
+                                                                    {% endif %}
                                                                     <br>
                                                                     <small class="text-muted">
                                                                         Experience: {{ boy.total_deliveries }} deliveries
@@ -173,7 +203,7 @@
 
             <!-- Right Column: Assigned Orders -->
             <div class="col-md-6">
-                <div class="card">
+                <div class="card mb-4">
                     <div class="card-header bg-success text-white">
                         <h5 class="mb-0">Assigned Orders</h5>
                     </div>
@@ -182,9 +212,17 @@
                         <div class="order-card">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h6 class="mb-0">Order #{{ assignment.order.id }}</h6>
-                                <span class="badge bg-{{ assignment.delivery_status }} status-badge">
+                                {% with status=assignment.delivery_status %}
+                                <span class="badge status-badge 
+                                    {% if status == 'pending' %}bg-warning
+                                    {% elif status == 'picked_up' %}bg-info
+                                    {% elif status == 'in_transit' %}bg-primary
+                                    {% elif status == 'delivered' %}bg-success
+                                    {% elif status == 'failed' %}bg-danger
+                                    {% endif %}">
                                     {{ assignment.get_delivery_status_display }}
                                 </span>
+                                {% endwith %}
                             </div>
                             <div class="mb-3">
                                 <p class="mb-1"><strong>Delivery Partner:</strong> {{ assignment.delivery_boy.user.name }}</p>
@@ -198,6 +236,36 @@
                         </div>
                         {% empty %}
                         <div class="alert alert-info">No assigned orders</div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- New Section: Delivered Orders -->
+                <div class="card">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Delivered Orders</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for assignment in delivered_orders %}
+                        <div class="order-card">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0">Order #{{ assignment.order.id }}</h6>
+                                <span class="badge status-badge bg-success">
+                                    {{ assignment.get_delivery_status_display }}
+                                </span>
+                            </div>
+                            <div class="mb-3">
+                                <p class="mb-1"><strong>Delivery Partner:</strong> {{ assignment.delivery_boy.user.name }}</p>
+                                <p class="mb-1"><strong>Customer:</strong> {{ assignment.order.customer.name }}</p>
+                                <p class="mb-1"><strong>Phone:</strong> {{ assignment.order.customer.phone }}</p>
+                                <p class="mb-1"><strong>Address:</strong> {{ assignment.order.customer.address }}</p>
+                                <p class="mb-1"><strong>Pincode:</strong> {{ assignment.order.customer.pincode }}</p>
+                                <p class="mb-1"><strong>Amount:</strong> ₹{{ assignment.order.total_amount }}</p>
+                                <p class="mb-1"><strong>Delivered:</strong> {{ assignment.assigned_date|timesince }} ago</p>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="alert alert-info">No delivered orders</div>
                         {% endfor %}
                     </div>
                 </div>

@@ -74,34 +74,34 @@
             <div class="col-auto col-md-3 col-xl-2 px-sm-2 px-0 bg-dark">
                 <div class="d-flex flex-column align-items-center align-items-sm-start px-3 pt-2 text-white min-vh-100">
                     <a href="" class="d-flex align-items-center pb-3 mb-md-0 me-md-auto text-white text-decoration-none">
-                        <span class="fs-5 d-none d-sm-inline">Admin Dashboard</span>
+                        <span class="fs-5 d-none d-sm-inline" style="color: #ffbe33;">Spotify Hub Admin Dashboard</span>
                     </a>
                     <ul class="nav nav-pills flex-column mb-sm-auto mb-0 align-items-center align-items-sm-start" id="menu">
                         <li class="nav-item">
                             <a href="#" class="nav-link align-middle px-0">
-                                <i class="fs-4 bi-house"></i> <span class="ms-1 d-none d-sm-inline">Home</span>
+                                <i class="fs-4 bi-house" style="color: #ffbe33;"></i> <span class="ms-1 d-none d-sm-inline" style="color: #ffbe33;">Home</span>
                             </a>
                         </li>
                         <li>
                             <a href="{% url 'product_list' %}" class="nav-link px-0 align-middle">
-                                <i class="fs-4 bi-table"></i> <span class="ms-1 d-none d-sm-inline">Products</span>
+                                <i class="fs-4 bi-table" style="color: #ffbe33;"></i> <span class="ms-1 d-none d-sm-inline" style="color: #ffbe33;">Products</span>
                             </a>
                         </li>
                         <li>
                             <a href="{% url 'customer_table' %}" class="nav-link px-0 align-middle">
-                                <i class="fs-4 bi-people"></i> <span class="ms-1 d-none d-sm-inline">Customers</span>
+                                <i class="fs-4 bi-people" style="color: #ffbe33;"></i> <span class="ms-1 d-none d-sm-inline" style="color: #ffbe33;">Customers</span>
                             </a>
                         </li>
                         
                         <li>
                             <a href="{% url 'admin_order_history' %}" class="nav-link px-0 align-middle">
-                                <i class="fs-4 bi-people"></i> <span class="ms-1 d-none d-sm-inline">Order History</span>
+                                <i class="fs-4 bi-people" style="color: #ffbe33;"></i> <span class="ms-1 d-none d-sm-inline" style="color: #ffbe33;">Order History</span>
                             </a>
                         </li>
                         <li>
                             <a href="{% url 'chat' %}" class="nav-link px-0 align-middle">
-                                <i class="fs-4 bi-chat"></i> 
-                                <span class="ms-1 d-none d-sm-inline">Chat with Customers</span>
+                                <i class="fs-4 bi-chat" style="color: #ffbe33;"></i> 
+                                <span class="ms-1 d-none d-sm-inline" style="color: #ffbe33;">Chat with Customers</span>
                                 {% if total_unread > 0 %}
                                     <span class="badge bg-danger rounded-pill">{{ total_unread }}</span>
                                 {% endif %}
@@ -109,8 +109,8 @@
                         </li>
                         <li>
                             <a href="{% url 'delivery_applications' %}" class="nav-link px-0 align-middle">
-                                <i class="fs-4 bi-person-badge"></i> 
-                                <span class="ms-1 d-none d-sm-inline">Delivery Applications</span>
+                                <i class="fs-4 bi-person-badge" style="color: #ffbe33;"></i> 
+                                <span class="ms-1 d-none d-sm-inline" style="color: #ffbe33;">Delivery Applications</span>
                                 {% if pending_applications_count > 0 %}
                                     <span class="badge bg-warning rounded-pill">{{ pending_applications_count }}</span>
                                 {% endif %}
@@ -118,13 +118,13 @@
                         </li>
                         <li>
                             <a href="{% url 'work_assign' %}" class="nav-link px-0 align-middle">
-                                <i class="bi bi-truck"></i>
-                                <span class="ms-1 d-none d-sm-inline">Assign Deliveries</span>
+                                <i class="bi bi-truck" style="color: #ffbe33;"></i>
+                                <span class="ms-1 d-none d-sm-inline" style="color: #ffbe33;">Assign Deliveries</span>
                             </a>
                         </li>
                         <li>
                             <a href="{% url 'logout' %}" class="nav-link px-0 align-middle">
-                                <i class="fs-4 bi-box-arrow-right"></i> <span class="ms-1 d-none d-sm-inline">Logout</span>
+                                <i class="fs-4 bi-box-arrow-right" style="color: #ffbe33;"></i> <span class="ms-1 d-none d-sm-inline" style="color: #ffbe33;">Logout</span>
                             </a>
                         </li>
                         
