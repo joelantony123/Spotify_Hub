@@ -48,5 +48,6 @@ urlpatterns = [
     path('work-assign/', views.work_assign, name='work_assign'),  # Changed from work_assign_view to work_assign
     path('assign-delivery-boy/', views.assign_delivery_boy, name='assign_delivery_boy'),
     path('delivery/history/', views.view_assigned_history, name='view_assigned_history'),
-    path('admin/assign-deliveries/', views.assign_deliveries, name='assign_deliveries'),
+    path('admin/assign-deliveries/', views.assign_delivery_boy, name='assign_deliveries'),
+    path('delivery/delete_delivery_boy/<int:delivery_boy_id>/', views.delete_delivery_boy, name='delete_delivery_boy'),
 ]

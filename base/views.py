@@ -1654,33 +1654,7 @@ def delivery_dashboard(request):
         messages.error(request, 'Delivery account not found.')
         return redirect('delivery_login')
 
-@require_POST
-def update_delivery_status(request):
-    try:
-        order_id = request.POST.get('order_id')
-        new_status = request.POST.get('status')
-        
-        order = Order.objects.get(id=order_id)
-        order_assignment = OrderAssigned.objects.get(order=order)
-        
-        # Update OrderAssigned status
-        order_assignment.delivery_status = new_status
-        order_assignment.save()
-        
-        # Update Order status based on delivery status
-        if new_status == 'accepted':
-            order.status = 'shipped'
-        elif new_status == 'delivered':
-            order.status = 'delivered'
-        
-        order.save()
-        
-        return JsonResponse({'status': 'success'})
-    except Exception as e:
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        })
+
 
 @require_POST
 def update_availability(request):
@@ -1929,13 +1903,22 @@ def work_assign(request):
             id__in=OrderAssigned.objects.values('order_id')
         ).order_by('-order_date')
         
+        # Modified delivery boys query to show all approved delivery boys
         delivery_boys = DeliveryBoy.objects.filter(
-            status='approved',
-            is_available=True
+            status='approved'  # Removed is_available=True filter
         ).select_related('user')
         
         assigned_orders = OrderAssigned.objects.filter(
             delivery_status__in=['pending', 'picked_up', 'in_transit']
+        ).select_related(
+            'order',
+            'order__customer',
+            'delivery_boy',
+            'delivery_boy__user'
+        ).order_by('-assigned_date')
+
+        delivered_orders = OrderAssigned.objects.filter(
+            delivery_status='delivered'
         ).select_related(
             'order',
             'order__customer',
@@ -1947,8 +1930,9 @@ def work_assign(request):
             'pending_orders': pending_orders,
             'delivery_boys': delivery_boys,
             'assigned_orders': assigned_orders,
+            'delivered_orders': delivered_orders,
             'is_admin': True,
-            'current_customer': customer  # Changed from admin_user to customer
+            'current_customer': customer
         }
         
         return render(request, 'Work_assign.html', context)
@@ -2101,3 +2085,77 @@ def assign_deliveries(request):
         messages.error(request, "An error occurred while loading the assign deliveries page")
         return redirect('admin_dashboard')
     
+@require_POST
+def update_delivery_status(request):
+    try:
+        order_id = request.POST.get('order_id')
+        new_status = request.POST.get('status')
+        
+        order = Order.objects.get(id=order_id)
+        order_assignment = OrderAssigned.objects.get(order=order)
+        delivery_boy = order_assignment.delivery_boy
+        
+        # Update OrderAssigned status
+        order_assignment.delivery_status = new_status
+        order_assignment.save()
+        
+        # Update Order status and delivery boy availability based on delivery status
+        if new_status == 'accepted':
+            order.status = 'shipped'
+        elif new_status == 'delivered':
+            order.status = 'delivered'
+            # Make delivery boy available again after successful delivery
+            delivery_boy.is_available = True
+            delivery_boy.save()
+        
+        order.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Order status updated to {new_status}'
+        })
+    except Order.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Order not found'
+        }, status=404)
+    except OrderAssigned.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Order assignment not found'
+        }, status=404)
+    except Exception as e:
+        logger.error(f"Error updating delivery status: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
+
+@require_POST
+def delete_delivery_boy(request, delivery_boy_id):
+    try:
+        delivery_boy = DeliveryBoy.objects.get(id=delivery_boy_id)
+        
+        # Delete the associated user account
+        user = delivery_boy.user
+        
+        # Delete the delivery boy record
+        delivery_boy.delete()
+        
+        # Delete the user account
+        user.delete()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Application deleted successfully'
+        })
+    except DeliveryBoy.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Delivery boy not found'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
