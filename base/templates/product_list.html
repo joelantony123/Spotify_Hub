@@ -7,6 +7,7 @@
     <title>Admin - Add Product</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{% static 'css/admin_styles.css' %}" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
         .table img {
             max-width: 50px;
@@ -27,6 +28,35 @@
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
             margin-top: 30px;
         }
+
+        /* Custom search box styling */
+        .search-form {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+
+        .search-form input {
+            border: 2px solid #e0e0e0;
+            transition: all 0.3s ease;
+        }
+
+        .search-form input:focus {
+            border-color: #ffbe33;
+            box-shadow: 0 0 0 0.2rem rgba(255, 190, 51, 0.25);
+        }
+
+        .search-form button {
+            background-color: #ffbe33;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-form button:hover {
+            background-color: #e5a820;
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body>
@@ -36,34 +66,33 @@
             <div class="col-auto col-md-3 col-xl-2 px-sm-2 px-0 bg-dark">
                 <div class="d-flex flex-column align-items-center align-items-sm-start px-3 pt-2 text-white min-vh-100">
                     <a href="" class="d-flex align-items-center pb-3 mb-md-0 me-md-auto text-white text-decoration-none">
-                        <span class="fs-5 d-none d-sm-inline">Admin Dashboard</span>
+                        <span class="fs-5 d-none d-sm-inline" style="color: #ffbe33;">Spotify Hub Admin Dashboard</span>
                     </a>
                     <ul class="nav nav-pills flex-column mb-sm-auto mb-0 align-items-center align-items-sm-start" id="menu">
                         <li class="nav-item">
                             <a href="{% url 'admin_dashboard' %}" class="nav-link align-middle px-0">
-                                <i class="fs-4 bi-house"></i> <span class="ms-1 d-none d-sm-inline">Home</span>
+                                <i class="bi bi-house-door" style="color: #ffbe33;"></i> <span class="ms-1 d-none d-sm-inline" style="color: #ffbe33;">Home</span>
                             </a>
                         </li>
                         <li>
                             <a href="#" class="nav-link px-0 align-middle">
-                                <i class="fs-4 bi-table"></i> <span class="ms-1 d-none d-sm-inline">Products</span>
+                                <i class="bi bi-box-seam" style="color: #ffbe33;"></i> <span class="ms-1 d-none d-sm-inline" style="color: #ffbe33;">Products</span>
                             </a>
                         </li>
                         <li>
                             <a href="{% url 'customer_table' %}" class="nav-link px-0 align-middle">
-                                <i class="fs-4 bi-people"></i> <span class="ms-1 d-none d-sm-inline">Customers</span>
+                                <i class="bi bi-people" style="color: #ffbe33;"></i> <span class="ms-1 d-none d-sm-inline" style="color: #ffbe33;">Customers</span>
                             </a>
                         </li>
                         
                         <li>
                             <a href="{% url 'admin_order_history' %}" class="nav-link px-0 align-middle">
-                                <i class="fs-4 bi-people"></i> <span class="ms-1 d-none d-sm-inline">Order History</span>
+                                <i class="bi bi-clock-history" style="color: #ffbe33;"></i> <span class="ms-1 d-none d-sm-inline" style="color: #ffbe33;">Order History</span>
                             </a>
                         </li>
                         <li>
                             <a href="{% url 'chat' %}" class="nav-link px-0 align-middle">
-                                <i class="fs-4 bi-chat"></i> 
-                                <span class="ms-1 d-none d-sm-inline">Chat with Customers</span>
+                                <i class="bi bi-chat-dots" style="color: #ffbe33;"></i> <span class="ms-1 d-none d-sm-inline" style="color: #ffbe33;">Chat with Customers</span>
                                 {% if total_unread > 0 %}
                                     <span class="badge bg-danger rounded-pill">{{ total_unread }}</span>
                                 {% endif %}
@@ -71,7 +100,7 @@
                         </li>
                         <li>
                             <a href="{% url 'logout' %}" class="nav-link px-0 align-middle">
-                                <i class="fs-4 bi-box-arrow-right"></i> <span class="ms-1 d-none d-sm-inline">Logout</span>
+                                <i class="bi bi-box-arrow-right" style="color: #ffbe33;"></i> <span class="ms-1 d-none d-sm-inline" style="color: #ffbe33;">Logout</span>
                             </a>
                         </li>
                         
@@ -88,7 +117,20 @@
         {% endif %}
             <!-- Main Content -->
             <div class="col py-3">
-                <h2 class="mt-5 mb-4">Existing Products</h2>
+                <div class="row align-items-center mb-3">
+                    <div class="col">
+                        <h2 class="mb-0">Existing Products</h2>
+                    </div>
+                    <div class="col-md-4">
+                        <form action="{% url 'product_list' %}" method="GET" class="d-flex search-form" onsubmit="return false;">
+                            <input type="text" name="product_name" class="form-control form-control-sm me-2" 
+                                   placeholder="Search by product name..." 
+                                   value="{{ request.GET.product_name }}">
+                            <button type="submit" class="btn btn-primary btn-sm">Search</button>
+                        </form>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
                     <table class="table table-striped">
                         <thead>
@@ -134,5 +176,23 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            $('.search-form input').on('input', function() {
+                var query = $(this).val();
+                $.ajax({
+                    url: "{% url 'product_list' %}",
+                    data: {
+                        'product_name': query
+                    },
+                    success: function(data) {
+                        // Update the table body with the new data
+                        $('tbody').html(data);
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>

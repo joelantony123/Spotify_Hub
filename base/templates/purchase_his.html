@@ -62,7 +62,7 @@
         <a href="{% url 'home' %}" class="btn btn-outline-primary" style="color: #ffc107;"><i class="fas fa-home"></i>Back to Home</a>
     </div>
 
-    {% if messages %}
+    <!-- {% if messages %}
     <div class="messages mb-4">
         {% for message in messages %}
         <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
@@ -71,7 +71,7 @@
         </div>
         {% endfor %}
     </div>
-    {% endif %}
+    {% endif %} -->
 
     {% if orders %}
         {% for order in orders %}

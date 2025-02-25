@@ -1342,6 +1342,14 @@ def product_list(request):
     # Get all products
     products = Product.objects.all()
     
+    # Handle search
+    search_query = request.GET.get('search', '')
+    if search_query:
+        products = products.filter(
+            Q(name__icontains=search_query) |
+            Q(category__icontains=search_query)
+        )
+    
     # Get total unread messages for admin
     total_unread = ChatMessage.objects.filter(
         receiver=admin_user,
