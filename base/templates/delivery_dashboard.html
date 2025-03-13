@@ -78,17 +78,39 @@
                         </div>
                     </div>
                     <div class="order-body">
+                        <p><strong>Customer Name:</strong> {{ order.customer.name }}</p>
+                        <p><strong>Phone Number:</strong> {{ order.customer.phone }}</p>
                         <p><strong>Delivery Address:</strong> {{ order.customer.address }}</p>
                         <p><strong>Items:</strong></p>
                         <ul>
                             {% for item in order.items.all %}
                             <li>{{ item.product_name }} x{{ item.quantity }}</li>
                             {% endfor %}
-                        </ul>
+                        </ul>   
                         <div class="d-flex justify-content-end">
-                            <button class="btn btn-sm btn-success me-2 update-status" 
-                                    data-order-id="{{ order.id }}">Update Status</button>
-                            <a href="#" class="btn btn-sm btn-primary">Navigate</a>
+                            {% if order.assigned_delivery.delivery_status == 'pending' %}
+                                <button class="btn btn-sm btn-success me-2 update-status" 
+                                        data-order-id="{{ order.id }}" data-status="picked_up">
+                                    Mark as Picked Up
+                                </button>
+                            {% elif order.assigned_delivery.delivery_status == 'picked_up' %}
+                                <button class="btn btn-sm btn-info me-2 update-status" 
+                                        data-order-id="{{ order.id }}" data-status="in_transit">
+                                    Mark In Transit
+                                </button>
+                            {% elif order.assigned_delivery.delivery_status == 'in_transit' %}
+                                <button class="btn btn-sm btn-primary me-2 update-status" 
+                                        data-order-id="{{ order.id }}" data-status="delivered">
+                                    Mark as Delivered
+                                </button>
+                            {% endif %}
+                            {% if order.assigned_delivery.delivery_status != 'delivered' and order.assigned_delivery.delivery_status != 'failed' %}
+                                <button class="btn btn-sm btn-danger update-status" 
+                                        data-order-id="{{ order.id }}" data-status="failed">
+                                    Mark as Failed
+                                </button>
+                            {% endif %}
+                            <a href="#" class="btn btn-sm btn-primary ms-2">Navigate</a>
                         </div>
                     </div>
                 </div>
@@ -96,29 +118,48 @@
                 <div class="alert alert-info">No orders assigned currently.</div>
                 {% endfor %}
             </div>
-        </div>
-    </div>
 
-    <!-- Status Update Modal -->
-    <div class="modal fade" id="statusModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Update Delivery Status</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <select class="form-select" id="statusSelect">
-                        <option value="pending">Pending</option>
-                        <option value="picked_up">Picked Up</option>
-                        <option value="in_transit">In Transit</option>
-                        <option value="delivered">Delivered</option>
-                        <option value="failed">Failed</option>
-                    </select>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" id="updateStatusBtn">Update</button>
+            <div class="col-md-12 mt-4" style="background-color: rgba(255, 255, 255, 0.7); border-radius: 10px; padding: 20px;">
+                <h4 >Completed Deliveries</h4>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Customer</th>
+                                <th>Delivery Address</th>
+                                <th>Items</th>
+                                <th>Delivery Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for assignment in completed_deliveries %}
+                            <tr>
+                                <td>#{{ assignment.order.id }}</td>
+                                <td>{{ assignment.order.customer.name }}</td>
+                                <td>{{ assignment.order.customer.address }}</td>
+                                <td>
+                                    <ul class="list-unstyled mb-0">
+                                        {% for item in assignment.order.items.all %}
+                                        <li>{{ item.product_name }} x{{ item.quantity }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </td>
+                                <td>{{ assignment.assigned_date|date:"F d, Y H:i" }}</td>
+                                <td>
+                                    <span class="badge {% if assignment.delivery_status == 'delivered' %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ assignment.get_delivery_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center">No completed deliveries yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -128,17 +169,12 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         $(document).ready(function() {
-            let currentOrderId;
-
             $('.update-status').click(function() {
-                currentOrderId = $(this).data('order-id');
-                $('#statusModal').modal('show');
-            });
-
-            $('#updateStatusBtn').click(function() {
-                const status = $('#statusSelect').val();
+                const orderId = $(this).data('order-id');
+                const status = $(this).data('status');
+                
                 $.post('/update-delivery-status/', {
-                    order_id: currentOrderId,
+                    order_id: orderId,
                     status: status,
                     csrfmiddlewaretoken: '{{ csrf_token }}'
                 }, function(response) {

@@ -52,6 +52,16 @@
         .btn-review {
             min-width: 120px;
         }
+        .modal {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .modal-content {
+            background-color: #fff;
+            opacity: 1 !important;
+        }
+        .modal-backdrop {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -86,6 +96,10 @@
                         <span class="badge bg-{{ order.status|lower }}" style="color: #0c0c0c;">{{ order.status|title }}</span>
                         <span class="badge bg-info ms-2" style="color: #0c0c0c;">
                             Delivery: {{ order.assigned_delivery.delivery_status|default:"Not Assigned"|title }}
+                            {% if order.assigned_delivery %}
+                                <br>
+                                <small>Partner: {{ order.assigned_delivery.delivery_boy.user.name }}</small>
+                            {% endif %}
                         </span>
                         {% if order.status == 'paid' or order.status == 'delivered' %}
                             <a href="{% url 'download_invoice' order.id %}" class="btn btn-sm btn-outline-secondary ms-2">
@@ -93,7 +107,7 @@
                             </a>
                         {% endif %}
                     </div>
-                </div>
+                </div> 
             </div>
             <div class="order-body">
                 <div class="table-responsive">
@@ -131,7 +145,7 @@
                                             </button>
                                             
                                             <!-- Review Modal -->
-                                            <div class="modal fade" id="reviewModal{{ item.id }}" tabindex="-1" aria-hidden="true">
+                                            <div class="modal fade" id="reviewModal{{ item.id }}" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
                                                 <div class="modal-dialog">
                                                     <div class="modal-content">
                                                         <div class="modal-header">
@@ -162,6 +176,7 @@
                                                                               name="comment" rows="3" required 
                                                                               placeholder="Share your experience with this product..."></textarea>
                                                                 </div>
+                                                          
                                                             </div>
                                                             <div class="modal-footer">
                                                                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>

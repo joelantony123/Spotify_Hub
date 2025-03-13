@@ -1134,6 +1134,7 @@ def product_detail(request, product_id):
 @never_cache
 @require_POST
 def add_review(request, product_id):
+    print("kjldsf")
     if not request.session.get('customer_id'):
         messages.error(request, 'Please login to add a review')
         return redirect('purchase_history')
@@ -1647,15 +1648,22 @@ def delivery_dashboard(request):
             messages.error(request, 'Your account is not approved yet.')
             return redirect('delivery_login')
             
-        # Get orders through OrderAssigned
+        # Get assigned orders
         assigned_orders = Order.objects.filter(
             assigned_delivery__delivery_boy=delivery_boy,
             assigned_delivery__delivery_status__in=['pending', 'picked_up', 'in_transit']
-        ).order_by('-order_date')
+        )
+        
+        # Get completed deliveries
+        completed_deliveries = OrderAssigned.objects.filter(
+            delivery_boy=delivery_boy,
+            delivery_status='delivered'
+        ).order_by('-assigned_date')
         
         context = {
             'delivery_boy': delivery_boy,
-            'assigned_orders': assigned_orders
+            'assigned_orders': assigned_orders,
+            'completed_deliveries': completed_deliveries,
         }
         return render(request, 'delivery_dashboard.html', context)
     except (Customer.DoesNotExist, DeliveryBoy.DoesNotExist):
@@ -2167,3 +2175,69 @@ def delete_delivery_boy(request, delivery_boy_id):
             'status': 'error',
             'message': str(e)
         }, status=500)
+
+@require_http_methods(["POST"])
+@never_cache
+def add_to_cart(request):
+    logger.info("Add to cart endpoint accessed")
+    
+    # Get customer from session
+    customer_id = request.session.get('customer_id')
+    if not customer_id:
+        logger.error("Customer not found in session")
+        return JsonResponse({'status': 'error', 'message': 'Please login to add items to cart'}, status=401)
+    
+    try:
+        # Get the product ID from POST data
+        product_id = request.POST.get('product_id')
+        if not product_id:
+            return JsonResponse({'status': 'error', 'message': 'Product ID not provided'}, status=400)
+        
+        # Get the customer and product
+        customer = Customer.objects.get(customer_id=customer_id)
+        product = Product.objects.get(id=product_id)
+        
+        # Get or create cart for the customer
+        cart, _ = Cart.objects.get_or_create(user=customer)
+        
+        # Get or create cart item
+        cart_item, created = CartItem.objects.get_or_create(cart=cart, product=product)
+        
+        # If item already exists, increment quantity
+        if not created:
+            cart_item.quantity += 1
+        else:
+            cart_item.quantity = 1
+            
+        # Check stock availability
+        if cart_item.quantity <= product.stock:
+            cart_item.save()
+            message = f"{product.name} has been added to your cart."
+            status = 'success'
+        else:
+            message = f"Sorry, we only have {product.stock} of {product.name} in stock."
+            status = 'error'
+            
+        # Calculate cart totals
+        cart_total = sum(item.product.price * item.quantity for item in cart.items.all())
+        tax = Decimal('0.10') * cart_total
+        total_with_tax = cart_total + tax
+        
+        return JsonResponse({
+            'status': status,
+            'message': message,
+            'cart_total': str(cart_total),
+            'tax': str(tax),
+            'total_with_tax': str(total_with_tax),
+            'cart_count': cart.items.count()
+        })
+        
+    except Customer.DoesNotExist:
+        logger.error(f"Customer with ID {customer_id} not found")
+        return JsonResponse({'status': 'error', 'message': 'Customer not found'}, status=404)
+    except Product.DoesNotExist:
+        logger.error(f"Product with ID {product_id} not found")
+        return JsonResponse({'status': 'error', 'message': 'Product not found'}, status=404)
+    except Exception as e:
+        logger.error(f"Error adding to cart: {str(e)}")
+        return JsonResponse({'status': 'error', 'message': 'An error occurred while adding to cart'}, status=500)
