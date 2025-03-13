@@ -91,7 +91,10 @@
         }
 
         .dropdown-item:hover {
-            background-color: #f8f9fa;
+            background-color: #28a745;
+            transform: none !important;
+            box-shadow: none !important;
+            color: inherit !important;
         }
 
         .dropdown-divider {
@@ -263,7 +266,7 @@
 
         /* Header Section Styles */
         .header_section {
-            padding: 15px 0;
+            padding: 15px 280px;
             background: rgba(0, 0, 0, 0.6); /* Semi-transparent black background */
         }
 
@@ -1046,12 +1049,14 @@
                             <form class="form-inline">
                   {% csrf_token %}
                   <button class="btn my-2 my-sm-0 nav_search-btn" type="submit">
- 
                   </button>
-                </form>
-                           
+                </form>      
                         </div>
-                    </div>
+                        <!-- <div class="user-info d-flex align-items-center me-3">
+                                <i class="fas fa-user-circle me-2" style="color: #ffbe33; font-size: 24px;"></i>
+                                <span style="color: #ffbe33; font-weight: 500;">{{ customer.name }}</span>
+                        </div> -->
+                    </div> 
                 </nav>
             </div>
         </header>
@@ -1583,20 +1588,20 @@
     <!-- End Google Map -->
 
     <!-- Chat Widget -->
-    <div class="chat-widget">
+    <div class="chat-widget" style="color: #ffbe33;">
         <!-- AI Chatbot Button & Window -->
         <button class="chat-button ai-chat" onclick="toggleAIChat()">
             <i class="fas fa-robot"></i>
         </button>
         
-        <div class="chat-window" id="aiChatWindow">
-            <div class="chat-header">
-                <h5>AI Assistant</h5>
-                <button type="button" class="close-btn" onclick="toggleAIChat()">&times;</button>
+        <div class="chat-window" id="aiChatWindow" style="color: #ffbe33;">
+            <div class="chat-header" style="background-color: #ffbe33; color: #000000;">
+                <i class="fas fa-robot"></i><h5>Sportif Hub AI Assistant</h5>
+                <button type="button" class="close-btn" onclick="toggleAIChat()" style="color: #000000;">&times;</button>
             </div>
             
-            <div class="chat-messages" id="aiChatMessages">
-                <div class="message received">
+            <div class="chat-messages" id="aiChatMessages" style="color: #ffbe33;" >
+                <div class="message received" style="background-color: #ffbe33; color: #000000;">
                     Hi! I'm your AI shopping assistant. How can I help you today?
                 </div>
             </div>
@@ -1604,7 +1609,7 @@
             <div class="chat-input">
                 <div class="input-group">
                     <input type="text" class="form-control" id="aiMessageInput" placeholder="Ask me anything...">
-                    <button class="btn btn-primary" type="button" onclick="handleSendMessage()">
+                    <button class="btn btn-primary" type="button" onclick="handleSendMessage()" style="color: #ffffff;">
                         <i class="fas fa-paper-plane"></i>
                     </button>
                 </div>
@@ -1621,16 +1626,16 @@
         </button>
         
         <div class="chat-window" id="adminChatWindow">
-            <div class="chat-header">
-                <h5>Chat with Admin</h5>
-                <button class="close-btn" onclick="toggleAdminChat()">&times;</button>
+            <div class="chat-header" style="background-color: #ffbe33; color: #000000;">
+                <i class="fas fa-headset"></i><h5>Chat with Admin</h5>
+                <button class="close-btn" onclick="toggleAdminChat()" style="color: #000000;">&times;</button>
             </div>
             
             <div class="chat-messages" id="adminChatMessages">
                 {% for message in messages %}
                 <div class="message {% if message.sender.customer_id == current_customer.customer_id %}sent{% else %}received{% endif %}">
                     {{ message.content }}
-                    <div class="timestamp">{{ message.timestamp|date:"M d, Y H:i" }}</div>
+                    <div class="timestamp" style="color: #000000;">{{ message.timestamp|date:"M d, Y H:i" }}</div>
                 </div>
                 {% endfor %}
             </div>
@@ -1786,7 +1791,7 @@
                 }
                 
                 const errorHtml = `
-                    <div class="message error">
+                    <div class="message error" style="background-color: #ff0000; color: #000000;">
                         Sorry, I encountered an error. Please try again.
                         <div class="timestamp">${new Date().toLocaleTimeString()}</div>
                     </div>

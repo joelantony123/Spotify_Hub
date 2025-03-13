@@ -76,6 +76,7 @@
                                                 <th>Items</th>
                                                 <th>Total Amount</th>
                                                 <th>Status</th>
+                                                <th>Delivery Partner</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -99,7 +100,15 @@
                                                         {{ order.status|title }}
                                                     </span>
                                                 </td>
-                                                
+                                                <td>
+                                                    {% if order.assigned_delivery %}
+                                                        <strong>{{ order.assigned_delivery.delivery_boy.user.name }}</strong>
+                                                        <br>
+                                                        <small class="text-muted">Status: {{ order.assigned_delivery.delivery_status|title }}</small>
+                                                    {% else %}
+                                                        <span class="text-muted">Not Assigned</span>
+                                                    {% endif %}
+                                                </td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>
