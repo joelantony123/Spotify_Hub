@@ -55,20 +55,20 @@
             <div class="col-md-4">
                 <div class="card mb-4" style="background-color: rgba(255, 255, 255, 0.5); border-radius: 10px; padding: 20px; margin-top: 20px;">
                     <div class="card-body">
-                        <h5 class="card-title">My Stats</h5>
-                        <p class="card-text">Rating: {{ delivery_boy.rating }}/5.0</p>
-                        <p class="card-text">Total Deliveries: {{ delivery_boy.total_deliveries }}</p>
-                        <div class="form-check form-switch">
+                        <h5 class="card-title" style="color: black;">My Stats</h5>
+                        <p class="card-text" style="color: black;">Rating: {{ delivery_boy.rating }}/5.0</p>
+                        <p class="card-text" style="color: black;">Total Deliveries: {{ delivery_boy.total_deliveries }}</p>
+                        <!-- <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="availabilityToggle" 
                                    {% if delivery_boy.is_available %}checked{% endif %}>
                             <label class="form-check-label" for="availabilityToggle">Available for Delivery</label>
-                        </div>
+                        </div> -->
                     </div>
                 </div>
             </div>
 
             <div class="col-md-8" style="background-color: rgba(255, 255, 255, 0.5); border-radius: 10px; padding: 20px; margin-top: 20px;">
-                <h4>Assigned Orders</h4>
+                <h4 style="color: black;">Assigned Orders</h4>
                 {% for order in assigned_orders %}
                 <div class="order-card">
                     <div class="order-header">
@@ -120,12 +120,12 @@
             </div>
 
             <div class="col-md-12 mt-4" style="background-color: rgba(255, 255, 255, 0.7); border-radius: 10px; padding: 20px;">
-                <h4 >Completed Deliveries</h4>
+                <h4 style="color: black;">Completed Deliveries</h4>
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead>
-                            <tr>
-                                <th>Order #</th>
+                            <tr style="background-color:#ffbe33;">
+                                <th>Order id</th>
                                 <th>Customer</th>
                                 <th>Delivery Address</th>
                                 <th>Items</th>
