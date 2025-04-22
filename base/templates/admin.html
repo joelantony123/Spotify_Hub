@@ -135,7 +135,7 @@
             <!-- Main Content -->
             <div class="col py-3">
                 <h2 class="mb-4">Add New Product</h2>
-                <form method="post" enctype="multipart/form-data" action="{% url 'admin_dashboard' %}">
+                <form method="post" enctype="multipart/form-data" action="{% url 'admin_dashboard' %}" id="productForm">
                     {% csrf_token %}
                     <div class="mb-3">
                         <label for="productName" class="form-label">Product Name</label>
@@ -151,13 +151,21 @@
                     </div>
                     <div class="mb-3">
                         <label for="productCategory" class="form-label">Category</label>
-                        <select class="form-select" id="productCategory" name="product_category" required>
-                            <option value="">Select a category</option>
+                        <select class="form-select" id="productCategory" name="product_category">
+                            <option value="" selected disabled>Select a category or upload an image for auto-detection</option>
                             <option value="cricket">Cricket</option>
                             <option value="football">Football</option>
                             <option value="badminton">Badminton</option>
                             <option value="table_games">Table Games</option>
                         </select>
+                        <div id="categoryPrediction" class="form-text mt-2" style="display: none;">
+                            <div class="alert alert-info">
+                                <i class="bi bi-magic"></i> <span id="predictionText"></span>
+                            </div>
+                        </div>
+                        <div id="categoryError" class="invalid-feedback">
+                            Please select a category or upload an image for auto-detection
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="productImage" class="form-label">Product Image</label>
@@ -191,5 +199,81 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Add this at the bottom of your admin.html template before the closing body tag -->
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const imageInput = document.getElementById('productImage');
+        const categorySelect = document.getElementById('productCategory');
+        const categoryPrediction = document.getElementById('categoryPrediction');
+        const predictionText = document.getElementById('predictionText');
+        
+        if (imageInput) {
+            imageInput.addEventListener('change', function(e) {
+                // Only proceed if no category is selected
+                if (categorySelect.value === '') {
+                    const file = e.target.files[0];
+                    if (file) {
+                        // Show loading message
+                        categoryPrediction.style.display = 'block';
+                        predictionText.textContent = 'Analyzing image...';
+                        
+                        const formData = new FormData();
+                        formData.append('image', file);
+                        
+                        // Send image for categorization
+                        fetch('/predict_category/', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Update the prediction text
+                                predictionText.textContent = `Image detected as "${data.category}" with ${(data.confidence * 100).toFixed(1)}% confidence.`;
+                                
+                                // Auto-select the category if confidence is high enough
+                                if (data.confidence >= 0.5) {
+                                    categorySelect.value = data.category;
+                                }
+                            } else {
+                                predictionText.textContent = 'Could not determine category from image.';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            predictionText.textContent = 'Error analyzing image.';
+                        });
+                    }
+                }
+            });
+            
+            // Clear prediction if category is manually selected
+            categorySelect.addEventListener('change', function() {
+                if (this.value !== '') {
+                    categoryPrediction.style.display = 'none';
+                }
+            });
+        }
+    });
+    document.addEventListener('DOMContentLoaded', function() {
+    const productForm = document.getElementById('productForm');
+    const categorySelect = document.getElementById('productCategory');
+    const categoryError = document.getElementById('categoryError');
+    
+    if (productForm) {
+        productForm.addEventListener('submit', function(e) {
+            // Check if category is selected
+            if (categorySelect.value === '') {
+                e.preventDefault();
+                categorySelect.classList.add('is-invalid');
+                categoryError.style.display = 'block';
+            } else {
+                categorySelect.classList.remove('is-invalid');
+                categoryError.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
 </body>
 </html>

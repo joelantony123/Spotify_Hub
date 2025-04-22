@@ -131,6 +131,7 @@
                                 <th>Items</th>
                                 <th>Delivery Date</th>
                                 <th>Status</th>
+                                <th>Payment</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -151,6 +152,16 @@
                                     <span class="badge {% if assignment.delivery_status == 'delivered' %}bg-success{% else %}bg-danger{% endif %}">
                                         {{ assignment.get_delivery_status_display }}
                                     </span>
+                                </td>
+                                <td>
+                                    <small>Payment: 
+                                        <span class="badge 
+                                            {% if assignment.order.status == 'paid' %}bg-success
+                                            {% elif assignment.order.status == 'pending' %}bg-warning
+                                            {% else %}bg-danger{% endif %}">
+                                            {{ assignment.order.status|title }}
+                                        </span>
+                                    </small>
                                 </td>
                             </tr>
                             {% empty %}

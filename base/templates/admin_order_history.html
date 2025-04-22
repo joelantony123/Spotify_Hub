@@ -7,6 +7,21 @@
     <title>Admin - Order History</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="{% static 'css/admin_styles.css' %}" rel="stylesheet">
+    <style>
+        .hidden {
+            display: none;
+        }
+        #payment-element {
+            margin-top: 20px;
+        }
+        .badge {
+            padding: 0.5em 0.8em;
+            font-size: 0.8em;
+        }
+        .pay-delivery-btn {
+            white-space: nowrap;
+        }
+    </style>
 </head>
 <body>
     <div class="container-fluid">
@@ -33,7 +48,7 @@
                                 <i class="fs-4 bi-people"></i> <span class="ms-1 d-none d-sm-inline">Customers</span>
                             </a>
                         </li>
-                        <li></li>
+                        <li>
                             <a href="{% url 'admin_order_history' %}" class="nav-link px-0 align-middle" style="color: #ffbe33;">
                                 <i class="fs-4 bi-people"></i> <span class="ms-1 d-none d-sm-inline">Order History</span>
                             </a>
@@ -77,6 +92,7 @@
                                                 <th>Total Amount</th>
                                                 <th>Status</th>
                                                 <th>Delivery Partner</th>
+                                                <th>Payment Status</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -109,6 +125,27 @@
                                                         <span class="text-muted">Not Assigned</span>
                                                     {% endif %}
                                                 </td>
+                                                <td>
+                                                    {% if order.assigned_delivery and order.assigned_delivery.delivery_status == 'delivered' %}
+                                                        {% if order.assigned_delivery.payment_processed %}
+                                                            <span class="badge bg-success">Paid ₹50</span>
+                                                            {% if order.assigned_delivery.payment_date %}
+                                                                <br>
+                                                                <small class="text-muted">{{ order.assigned_delivery.payment_date|date:"M d, Y" }}</small>
+                                                            {% endif %}
+                                                        {% else %}
+                                                            <button class="btn btn-sm btn-success pay-delivery-btn" 
+                                                                    data-bs-toggle="modal" 
+                                                                    data-bs-target="#paymentModal" 
+                                                                    data-order-id="{{ order.id }}"
+                                                                    data-delivery-boy="{{ order.assigned_delivery.delivery_boy.user.name }}">
+                                                                Pay Delivery Partner
+                                                            </button>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        <span class="badge bg-secondary">Not Eligible</span>
+                                                    {% endif %}
+                                                </td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>
@@ -126,6 +163,150 @@
         </div>
     </div>
 
+    <!-- Payment Modal -->
+    <div class="modal fade" id="paymentModal" tabindex="-1" aria-labelledby="paymentModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="paymentModalLabel">Process Delivery Payment</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>You are about to process a payment of ₹50 to <span id="deliveryBoyName"></span> for order #<span id="orderIdDisplay"></span>.</p>
+                    <div id="payment-element">
+                        <!-- Stripe Elements will be inserted here -->
+                    </div>
+                    <div id="payment-message" class="hidden mt-2"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button id="submit-payment" class="btn btn-primary">Process Payment</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://js.stripe.com/v3/"></script>
+    <script>
+        // Initialize Stripe
+        const stripe = Stripe('{{ stripe_publishable_key }}');
+        let elements;
+        let paymentElement;
+        let currentOrderId;
+
+        // Handle payment button clicks
+        document.querySelectorAll('.pay-delivery-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const orderId = this.getAttribute('data-order-id');
+                const deliveryBoyName = this.getAttribute('data-delivery-boy');
+                
+                // Update modal content
+                document.getElementById('deliveryBoyName').textContent = deliveryBoyName;
+                document.getElementById('orderIdDisplay').textContent = orderId;
+                currentOrderId = orderId;
+                
+                // Initialize payment elements
+                initializePayment(orderId);
+            });
+        });
+
+        async function initializePayment(orderId) {
+            try {
+                // Create payment intent on the server
+                const response = await fetch('/create-delivery-payment-intent/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({
+                        order_id: orderId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    showMessage(data.error);
+                    return;
+                }
+                
+                // Initialize Stripe Elements
+                elements = stripe.elements({
+                    clientSecret: data.clientSecret,
+                    appearance: {
+                        theme: 'stripe',
+                        variables: {
+                            colorPrimary: '#ffbe33',
+                        }
+                    }
+                });
+                
+                // Create and mount the Payment Element
+                paymentElement = elements.create('payment');
+                paymentElement.mount('#payment-element');
+                
+            } catch (error) {
+                console.error('Error initializing payment:', error);
+                showMessage('An error occurred while setting up the payment. Please try again.');
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('submit-payment').addEventListener('click', async function(e) {
+            e.preventDefault();
+            
+            // Disable the button to prevent multiple clicks
+            this.disabled = true;
+            
+            try {
+                const {error} = await stripe.confirmPayment({
+                    elements,
+                    confirmParams: {
+                        return_url: window.location.origin + '/process-delivery-payment/?order_id=' + currentOrderId,
+                    }
+                });
+                
+                if (error) {
+                    showMessage(error.message);
+                    this.disabled = false;
+                }
+                
+            } catch (e) {
+                console.error('Payment confirmation error:', e);
+                showMessage('An error occurred during payment processing. Please try again.');
+                this.disabled = false;
+            }
+        });
+
+        // Helper function to show messages
+        function showMessage(messageText) {
+            const messageElement = document.getElementById('payment-message');
+            messageElement.classList.remove('hidden');
+            messageElement.textContent = messageText;
+            
+            setTimeout(function() {
+                messageElement.classList.add('hidden');
+                messageElement.textContent = '';
+            }, 5000);
+        }
+
+        // Helper function to get CSRF token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
 </body>
 </html>

@@ -152,7 +152,14 @@
                                     {% endif %}
                                 </td>
                                 <td>{{ product.name }}</td>
-                                <td>{{ product.category }}</td>
+                                <td>
+                                    {{ product.category }}
+                                    {% if product.auto_categorized %}
+                                    <span class="badge bg-info" title="Auto-categorized with {{ product.prediction_confidence|floatformat:2 }} confidence">
+                                        <i class="bi bi-magic"></i>
+                                    </span>
+                                    {% endif %}
+                                </td>
                                 <td>₹{{ product.price }}</td>
                                 <td>{{ product.stock }}</td>
                                 <td>

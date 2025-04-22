@@ -46,7 +46,7 @@ class TestLogin(unittest.TestCase):
         print("Test Case 3 completed: Wrong credentials tested")
 
     def test_case_4_valid_login(self):
-        print("\nExecuting Test Case 4: Valid Login")
+        print("\nExecuting Test Case 1: Valid Login")
         email = self.driver.find_element(By.NAME, "email")
         password = self.driver.find_element(By.NAME, "password")
         
@@ -58,7 +58,7 @@ class TestLogin(unittest.TestCase):
         time.sleep(2)
         # Assert we're no longer on the login page
         self.assertNotEqual(self.driver.current_url, "http://127.0.0.1:8000/login/")
-        print("Test Case 4 completed: Valid login tested")
+        print("Test Case completed: Valid login tested")
 
     def wait_for_sweet_alert(self):
         """Helper method to wait for SweetAlert"""

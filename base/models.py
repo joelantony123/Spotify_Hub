@@ -164,6 +164,9 @@ class OrderAssigned(models.Model):
     ], default='pending')
     delivery_notes = models.TextField(blank=True, null=True)
     estimated_delivery_time = models.DateTimeField(null=True, blank=True)
+    payment_processed = models.BooleanField(default=False)
+    payment_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    payment_date = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-assigned_date']

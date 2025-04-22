@@ -51,4 +51,7 @@ urlpatterns = [
     path('admin/assign-deliveries/', views.assign_delivery_boy, name='assign_deliveries'),
     path('delivery/delete_delivery_boy/<int:delivery_boy_id>/', views.delete_delivery_boy, name='delete_delivery_boy'),
     path('add_to_cart/', views.add_to_cart, name='add_to_cart'),
+    path('predict_category/', views.predict_category_ajax, name='predict_category_ajax'),
+    path('create-delivery-payment-intent/', views.create_delivery_payment_intent, name='create_delivery_payment_intent'),
+    path('process-delivery-payment/', views.process_delivery_payment, name='process_delivery_payment'),
 ]

@@ -44,6 +44,7 @@ from django.db.models import Q
 import google.generativeai as genai
 from .models import Order, DeliveryBoy, OrderAssigned
 from django.db.models import Q
+from django.utils import timezone
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -202,6 +203,10 @@ def admin_dashboard(request):
             messages.error(request, 'Unauthorized access.')
             return redirect('login')
             
+        # Initialize prediction variables
+        predicted_category = None
+        prediction_confidence = 0
+        
         if request.method == 'POST':
             try:
                 name = request.POST.get('product_name')
@@ -210,6 +215,28 @@ def admin_dashboard(request):
                 category = request.POST.get('product_category')
                 image = request.FILES.get('product_image')
                 stock = request.POST.get('product_stock')
+
+                # Auto-categorize if image is provided and no category is selected
+                if image and (not category or category == ''):
+                    # Read image data
+                    image_data = image.read()
+                    # Reset file pointer for later use
+                    image.seek(0)
+                    
+                    # Predict category
+                    prediction = predict_image_category(image_data)
+                    if prediction:
+                        predicted_category = prediction['category']
+                        prediction_confidence = prediction['confidence']
+                        
+                        # Use prediction if confidence is high enough
+                        if prediction_confidence >= 0.5:
+                            category = predicted_category
+                            messages.success(request, f"Image automatically categorized as '{predicted_category}' with {prediction_confidence:.2f} confidence.")
+                        else:
+                            # Default to first category if confidence is low
+                            category = 'cricket'  # Default category
+                            messages.info(request, f"Category prediction confidence was low ({prediction_confidence:.2f}). Using default category.")
 
                 product = Product(
                     name=name,
@@ -241,7 +268,9 @@ def admin_dashboard(request):
             'products': products,
             'total_unread': total_unread,
             'chat_users': chat_users,
-            'current_customer': admin_user  # Add current customer (admin) to context
+            'current_customer': admin_user,  # Add current customer (admin) to context
+            'predicted_category': predicted_category,
+            'prediction_confidence': prediction_confidence
         }
         
         return render(request, 'admin.html', context)
@@ -252,7 +281,6 @@ def admin_dashboard(request):
         logger.error(f"Error in admin dashboard: {str(e)}")
         messages.error(request, "An error occurred while loading the admin dashboard")
         return redirect('login')
-
 def is_admin(user):
     try:
         customer_id = user.session.get('customer_id')
@@ -266,6 +294,7 @@ from django.contrib import messages
 from django.shortcuts import redirect, render
 from .models import Product
 
+from .product_categorizer import predict_image_category
 @never_cache
 def add_product(request):
     if request.method == 'POST':
@@ -276,6 +305,41 @@ def add_product(request):
         image = request.FILES.get('product_image')
         stock = request.POST.get('product_stock')
 
+        # Validate required fields
+        if not all([name, description, price, stock]):
+            messages.error(request, 'Please fill in all required fields')
+            return render(request, 'admin.html')
+            
+        # Auto-categorize if image is provided and no category is selected
+        predicted_category = None
+        prediction_confidence = 0
+        
+        if image and (not category or category == ''):
+            # Read image data
+            image_data = image.read()
+            # Reset file pointer for later use
+            image.seek(0)
+            
+            # Predict category
+            prediction = predict_image_category(image_data)
+            if prediction:
+                predicted_category = prediction['category']
+                prediction_confidence = prediction['confidence']
+                
+                # Use prediction if confidence is high enough
+                if prediction_confidence >= 0.5:
+                    category = predicted_category
+                    messages.success(request, f"Image automatically categorized as '{predicted_category}' with {prediction_confidence:.2f} confidence.")
+                else:
+                    # Default to first category if confidence is low
+                    category = 'cricket'  # Default category
+                    messages.info(request, f"Category prediction confidence was low ({prediction_confidence:.2f}). Using default category.")
+        
+        # If still no category, return an error
+        if not category:
+            messages.error(request, 'Please select a category or upload an image for auto-detection')
+            return render(request, 'admin.html')
+
         try:
             product = Product(
                 name=name,
@@ -285,15 +349,11 @@ def add_product(request):
                 image=image,
                 stock=stock
             )
-            product.full_clean()  # This will raise a ValidationError if any field is invalid
             product.save()
             messages.success(request, f'Product "{name}" has been added successfully.')
             return redirect('admin_dashboard')
-        except ValidationError as e:
-            messages.error(request, f'Validation error: {e}')
         except Exception as e:
-            messages.error(request, f'An error occurred while adding the product: {str(e)}')
-            print(f"Exception details: {e}")  # This will print the full exception details
+            messages.error(request, f'Error adding product: {str(e)}')
 
     return render(request, 'admin.html')
 
@@ -1061,31 +1121,40 @@ def download_invoice(request, order_id):
 
 @never_cache
 def admin_order_history(request):
-    # Check if user is admin
     customer_id = request.session.get('customer_id')
+    if not customer_id:
+        return redirect('login')
+        
     try:
         admin_user = Customer.objects.get(customer_id=customer_id)
         if admin_user.user_type != 'admin':
             messages.error(request, 'Unauthorized access.')
             return redirect('login')
+            
+        # Get all orders grouped by date
+        orders = Order.objects.all().order_by('-order_date')
+        
+        # Group orders by date
+        orders_by_date = {}
+        for order in orders:
+            date = order.order_date.date()
+            if date not in orders_by_date:
+                orders_by_date[date] = []
+            orders_by_date[date].append(order)
+            
+        context = {
+            'orders_by_date': orders_by_date,
+            'stripe_publishable_key': settings.STRIPE_PUBLISHABLE_KEY,
+        }
+        
+        return render(request, 'admin_order_history.html', context)
+        
     except Customer.DoesNotExist:
         return redirect('login')
-
-    # Get all orders with related customer information
-    orders = Order.objects.select_related('customer').prefetch_related('items').order_by('-order_date')
-
-    # Group orders by date for better organization
-    orders_by_date = {}
-    for order in orders:
-        date = order.order_date.date()
-        if date not in orders_by_date:
-            orders_by_date[date] = []
-        orders_by_date[date].append(order)
-
-    context = {
-        'orders_by_date': orders_by_date,
-    }
-    return render(request, 'admin_order_history.html', context)
+    except Exception as e:
+        logger.error(f"Error in admin order history: {str(e)}")
+        messages.error(request, "An error occurred while loading the order history")
+        return redirect('admin_dashboard')
 
 @never_cache
 def product_detail(request, product_id):
@@ -2241,3 +2310,127 @@ def add_to_cart(request):
     except Exception as e:
         logger.error(f"Error adding to cart: {str(e)}")
         return JsonResponse({'status': 'error', 'message': 'An error occurred while adding to cart'}, status=500)
+  
+@csrf_exempt
+def predict_category_ajax(request):
+    if request.method == 'POST' and request.FILES.get('image'):
+        image = request.FILES['image']
+        image_data = image.read()
+        
+        # Predict category
+        prediction = predict_image_category(image_data)
+        
+        if prediction:
+            return JsonResponse({
+                'success': True,
+                'category': prediction['category'],
+                'confidence': prediction['confidence'],
+                'all_scores': prediction['all_scores']
+            })
+        else:
+            return JsonResponse({'success': False, 'message': 'Could not predict category'})
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request'})
+
+@require_POST
+def create_delivery_payment_intent(request):
+    try:
+        data = json.loads(request.body)
+        order_id = data.get('order_id')
+        
+        # Verify the order exists and is eligible for payment
+        order = get_object_or_404(Order, id=order_id)
+        order_assignment = get_object_or_404(OrderAssigned, order=order)
+        
+        # Check if payment is already processed
+        if order_assignment.payment_processed:
+            return JsonResponse({'error': 'Payment has already been processed for this delivery'})
+        
+        # Create a payment intent for ₹50 (5000 paise)
+        payment_intent = stripe.PaymentIntent.create(
+            amount=5000,  # Amount in paise (₹50)
+            currency='inr',
+            metadata={
+                'order_id': order_id,
+                'delivery_boy_id': order_assignment.delivery_boy.id,
+            },
+            description=f"Delivery payment for Order #{order_id}"
+        )
+        
+        return JsonResponse({
+            'clientSecret': payment_intent.client_secret
+        })
+        
+    except Exception as e:
+        logger.error(f"Error creating payment intent: {str(e)}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+@never_cache
+def process_delivery_payment(request):
+    order_id = request.GET.get('order_id')
+    payment_intent_id = request.GET.get('payment_intent')
+    
+    try:
+        # Verify the order exists
+        order = get_object_or_404(Order, id=order_id)
+        order_assignment = get_object_or_404(OrderAssigned, order=order)
+        
+        # Retrieve the payment intent to confirm it's successful
+        payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
+        
+        if payment_intent.status == 'succeeded':
+            # Update the order assignment with payment details
+            order_assignment.payment_processed = True
+            order_assignment.payment_amount = Decimal('50.00')
+            order_assignment.payment_date = timezone.now()
+            order_assignment.save()
+            
+            # Update the success message to include the delivery boy's name
+            delivery_boy_name = order_assignment.delivery_boy.user.name
+            messages.success(request, f"Payment of ₹50 successfully processed for {delivery_boy_name} for delivery of Order #{order_id}")
+        else:
+            messages.error(request, "Payment processing failed. Please try again.")
+        
+        return redirect('admin_order_history')
+        
+    except Exception as e:
+        logger.error(f"Error processing delivery payment: {str(e)}")
+        messages.error(request, f"Error processing payment: {str(e)}")
+        return redirect('admin_order_history')
+
+@never_cache
+def admin_order_history(request):
+    customer_id = request.session.get('customer_id')
+    if not customer_id:
+        return redirect('login')
+        
+    try:
+        admin_user = Customer.objects.get(customer_id=customer_id)
+        if admin_user.user_type != 'admin':
+            messages.error(request, 'Unauthorized access.')
+            return redirect('login')
+            
+        # Get all orders grouped by date
+        orders = Order.objects.all().order_by('-order_date')
+        
+        # Group orders by date
+        orders_by_date = {}
+        for order in orders:
+            date = order.order_date.date()
+            if date not in orders_by_date:
+                orders_by_date[date] = []
+            orders_by_date[date].append(order)
+            
+        context = {
+            'orders_by_date': orders_by_date,
+            'stripe_publishable_key': settings.STRIPE_PUBLISHABLE_KEY,
+        }
+        
+        return render(request, 'admin_order_history.html', context)
+        
+    except Customer.DoesNotExist:
+        return redirect('login')
+    except Exception as e:
+        logger.error(f"Error in admin order history: {str(e)}")
+        messages.error(request, "An error occurred while loading the order history")
+        return redirect('admin_dashboard')
