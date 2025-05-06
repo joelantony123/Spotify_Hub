@@ -30,34 +30,48 @@ class ProductCategorizer:
             if isinstance(img_data, bytes):
                 img = Image.open(io.BytesIO(img_data))
             elif isinstance(img_data, str) and os.path.exists(img_data):
-                # It's a file path
                 img = Image.open(img_data)
             else:
-                # Assume it's already a PIL Image
                 img = img_data
                 
             # Convert to RGB if needed
             if img.mode != 'RGB':
                 img = img.convert('RGB')
-                
-            # Resize to expected size
-            img = img.resize((224, 224))
+            
+            # Store original size for aspect ratio calculations
+            original_size = img.size
+            
+            # Resize while maintaining aspect ratio
+            if original_size[0] > original_size[1]:
+                new_width = 224
+                new_height = int(224 * original_size[1] / original_size[0])
+            else:
+                new_height = 224
+                new_width = int(224 * original_size[0] / original_size[1])
+            
+            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            # Create new image with padding to get to 224x224
+            new_img = Image.new('RGB', (224, 224), (255, 255, 255))
+            paste_x = (224 - new_width) // 2
+            paste_y = (224 - new_height) // 2
+            new_img.paste(img, (paste_x, paste_y))
             
             # Convert to array and preprocess
-            img_array = image.img_to_array(img)
+            img_array = image.img_to_array(new_img)
             img_array = np.expand_dims(img_array, axis=0)
-            return preprocess_input(img_array)
+            return preprocess_input(img_array), new_img
         except Exception as e:
             print(f"Error preprocessing image: {e}")
-            return None
+            return None, None
     
     def predict_category(self, img_data):
         """
         Use pre-trained model to predict sports equipment category
         """
         try:
-            processed_img = self.preprocess_image(img_data)
-            if processed_img is None:
+            processed_img, pil_img = self.preprocess_image(img_data)
+            if processed_img is None or pil_img is None:
                 return None
             
             # Get ImageNet predictions
@@ -66,60 +80,80 @@ class ProductCategorizer:
             # Map ImageNet classes to our sports categories
             # These mappings are based on common ImageNet classes that correspond to sports equipment
             sports_mappings = {
-                # Cricket related ImageNet classes - expanded with more specific terms
+                # Cricket related classes
                 'cricket_bat': 'cricket',
                 'cricket_ball': 'cricket',
-                'jersey': 'cricket',
                 'cricket_helmet': 'cricket',
-                'sporting_equipment': 'cricket',
-                'batsman': 'cricket',
-                'wicket': 'cricket',
-                'stumps': 'cricket',
                 'cricket_glove': 'cricket',
                 'cricket_pad': 'cricket',
-                'small_ball': 'cricket',  # Added for cricket ball detection
-                'red_ball': 'cricket',    # Added for cricket ball detection
-                'leather_ball': 'cricket', # Added for cricket ball detection
-                'hard_ball': 'cricket',   # Added for cricket ball detection
+                'cricket_stump': 'cricket',
+                'cricket_wicket': 'cricket',
+                'cricket_gear': 'cricket',
+                'cricket_equipment': 'cricket',
+                'cricket_protection': 'cricket',
+                'batting_helmet': 'cricket',
+                'protective_helmet': 'cricket',
+                'sports_helmet': 'cricket',
+                'face_guard': 'cricket',
+                'helmet_grill': 'cricket',
                 
-                # Football related classes - refined to be more specific
+                # Football related classes
                 'soccer_ball': 'football',
-                'football_helmet': 'football',
-                'jersey': 'football',
-                'soccer_field': 'football',
-                'football_field': 'football',
-                'goal': 'football',
-                'goalkeeper': 'football',
-                'soccer_player': 'football',
-                'football_player': 'football',
-                'cleat': 'football',
+                'football': 'football',
+                'soccer_boot': 'football',
+                'football_boot': 'football',
+                'soccer_shoe': 'football',
+                'football_shoe': 'football',
                 'soccer_cleat': 'football',
+                'football_cleat': 'football',
+                'soccer_goal': 'football',
+                'football_goal': 'football',
+                'soccer_net': 'football',
+                'football_net': 'football',
+                'soccer_glove': 'football',
+                'goalkeeper_glove': 'football',
+                'shin_guard': 'football',
+                'soccer_uniform': 'football',
+                'football_uniform': 'football',
                 
                 # Badminton related classes
-                'racket': 'badminton',
-                'shuttle_cock': 'badminton',
-                'tennis_racket': 'badminton',
                 'badminton_racket': 'badminton',
-                'badminton_court': 'badminton',
+                'badminton_racquet': 'badminton',
+                'shuttlecock': 'badminton',
+                'shuttle_cock': 'badminton',
                 'badminton_net': 'badminton',
-                'badminton_player': 'badminton',
+                'badminton_court': 'badminton',
+                'badminton_shoe': 'badminton',
+                'badminton_gear': 'badminton',
+                'badminton_equipment': 'badminton',
+                'feather_shuttlecock': 'badminton',
+                'plastic_shuttlecock': 'badminton',
+                'badminton_string': 'badminton',
+                'badminton_grip': 'badminton',
                 
                 # Table games related classes
-                'table': 'table_games',
                 'chess_board': 'table_games',
-                'carrom_board': 'table_games',
-                'pool_table': 'table_games',
-                'ping-pong_ball': 'table_games',
-                'ping-pong_racket': 'table_games',
                 'chess_piece': 'table_games',
-                'chess_king': 'table_games',
-                'chess_queen': 'table_games',
-                'billiard_ball': 'table_games',
+                'chess_set': 'table_games',
+                'carrom_board': 'table_games',
+                'carrom_striker': 'table_games',
+                'carrom_coin': 'table_games',
+                'table_tennis': 'table_games',
+                'ping_pong': 'table_games',
+                'ping_pong_paddle': 'table_games',
+                'table_tennis_paddle': 'table_games',
+                'ping_pong_ball': 'table_games',
+                'table_tennis_ball': 'table_games',
                 'billiard_table': 'table_games',
-                'foosball_table': 'table_games',
+                'pool_table': 'table_games',
+                'snooker_table': 'table_games',
+                'cue_stick': 'table_games',
+                'billiard_ball': 'table_games',
+                'pool_ball': 'table_games',
+                'snooker_ball': 'table_games',
                 'board_game': 'table_games',
                 'playing_card': 'table_games',
-                'dice': 'table_games'
+                'game_board': 'table_games'
             }
             
             # Get top 10 predictions from ImageNet
@@ -133,7 +167,13 @@ class ProductCategorizer:
                 'cricket': ['cricket', 'bat', 'wicket', 'stump', 'pad', 'glove', 'helmet', 'red ball', 'small ball', 
                            'leather ball', 'pitch', 'bowler', 'batsman', 'fielder', 'crease', 'innings', 'test match', 
                            'odi', 't20', 'ball', 'willow', 'wooden bat', 'cricket field', 'oval', 'cricket ground', 
-                           'cricket stadium', 'cricket gear', 'cricket equipment', 'bails', 'cricket whites'],
+                           'cricket stadium', 'cricket gear', 'cricket equipment', 'bails', 'cricket whites',
+                           'protective gear', 'face guard', 'visor', 'head protection', 'batting helmet', 'grill',
+                           'neck guard', 'impact protection', 'cricket protection', 'cricket helmet', 'sports helmet',
+                           'protective helmet', 'helmet grill', 'helmet visor', 'cricket protective', 'cricket safety',
+                           'batting protection', 'head gear', 'protective headwear', 'cricket headgear', 'cricket mask',
+                           'face protection', 'cricket face guard', 'cricket visor', 'cricket head protection',
+                           'cricket protective gear', 'cricket safety equipment', 'cricket protective equipment'],
                            
                 'football': ['football', 'soccer', 'goal', 'boot', 'cleat', 'jersey', 'large ball', 'black and white', 
                             'pitch', 'field', 'goalkeeper', 'striker', 'defender', 'midfielder', 'penalty', 'corner', 
@@ -182,140 +222,124 @@ class ProductCategorizer:
                         specificity = max([len(keyword)/len(class_name) for keyword in partial_matches])
                         category_scores[category] += score * position_weight * 0.8 * specificity
             
-            # Enhanced color analysis as additional feature - with improved cricket ball detection
+            # After shape detection, add specific feature detection for each category
             try:
-                if isinstance(img_data, bytes):
-                    img = Image.open(io.BytesIO(img_data))
-                elif isinstance(img_data, str) and os.path.exists(img_data):
-                    img = Image.open(img_data)
-                else:
-                    img = img_data
+                # Convert image to grayscale for shape detection
+                gray = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2GRAY)
+                edges = cv2.Canny(gray, 50, 150)
+                contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 
-                img = img.convert('RGB').resize((100, 100))  # Increased resolution for better analysis
-                pixels = np.array(img)
-                
-                # Calculate average color
-                avg_color = np.mean(pixels, axis=(0, 1))
-                
-                # Calculate color histograms for more detailed analysis
-                r_hist = np.histogram(pixels[:,:,0], bins=8, range=(0,256))[0] / 10000
-                g_hist = np.histogram(pixels[:,:,1], bins=8, range=(0,256))[0] / 10000
-                b_hist = np.histogram(pixels[:,:,2], bins=8, range=(0,256))[0] / 10000
-                
-                # Calculate size and shape features
-                # Detect circular objects (balls)
-                try:
-                    # Convert to grayscale for shape detection
-                    gray = np.mean(pixels, axis=2).astype(np.uint8)
+                if contours:
+                    largest_contour = max(contours, key=cv2.contourArea)
+                    x, y, w, h = cv2.boundingRect(largest_contour)
+                    aspect_ratio = float(w)/h
+                    area = cv2.contourArea(largest_contour)
+                    perimeter = cv2.arcLength(largest_contour, True)
                     
-                    # Simple circle detection based on color distribution
-                    is_small_object = False
-                    is_circular = False
+                    # Calculate shape features
+                    circularity = 4 * np.pi * area / (perimeter * perimeter) if perimeter > 0 else 0
+                    relative_size = area / (pil_img.size[0] * pil_img.size[1])
                     
-                    # Check if the image has a dominant circular shape
-                    # This is a simplified approach - for better results use proper circle detection
+                    # Enhanced helmet detection
+                    # 1. Check for red color (cricket helmets are often red)
+                    hsv = cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2HSV)
+                    lower_red1 = np.array([0, 70, 50])
+                    upper_red1 = np.array([10, 255, 255])
+                    lower_red2 = np.array([170, 70, 50])
+                    upper_red2 = np.array([180, 255, 255])
                     
-                    # Check if the object is relatively small in the frame
-                    # Get object mask by simple thresholding
-                    _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
-                    contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                    red_mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
+                    red_mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
+                    red_mask = cv2.bitwise_or(red_mask1, red_mask2)
                     
+                    red_ratio = np.sum(red_mask > 0) / (red_mask.shape[0] * red_mask.shape[1])
+                    
+                    # 2. Detect grill pattern
+                    edges = cv2.Canny(gray, 50, 150)
+                    lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=30,
+                                          minLineLength=20, maxLineGap=10)
+                    
+                    vertical_lines = 0
+                    if lines is not None:
+                        for line in lines:
+                            x1, y1, x2, y2 = line[0]
+                            angle = np.abs(np.arctan2(y2-y1, x2-x1) * 180.0 / np.pi)
+                            if 75 <= angle <= 105:  # Near vertical lines
+                                vertical_lines += 1
+                    
+                    # 3. Shape detection
+                    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                     if contours:
                         largest_contour = max(contours, key=cv2.contourArea)
-                        area = cv2.contourArea(largest_contour)
-                        perimeter = cv2.arcLength(largest_contour, True)
+                        x, y, w, h = cv2.boundingRect(largest_contour)
+                        aspect_ratio = float(w)/h
                         
-                        # Circularity measure: 4*pi*area/perimeter^2 (1.0 for perfect circle)
-                        if perimeter > 0:
-                            circularity = 4 * np.pi * area / (perimeter * perimeter)
-                            is_circular = circularity > 0.7  # Threshold for circular objects
+                        # Typical cricket helmet aspect ratio
+                        is_helmet_ratio = 1.1 <= aspect_ratio <= 1.8
                         
-                        # Size relative to image
-                        relative_size = area / (100 * 100)
-                        is_small_object = relative_size < 0.5  # Small objects like cricket balls
-                except Exception as shape_error:
-                    print(f"Shape analysis error: {shape_error}")
-                    is_circular = False
-                    is_small_object = False
-                
-                # Red dominant - likely cricket ball
-                if avg_color[0] > 120 and avg_color[0] > avg_color[1] * 1.5 and avg_color[0] > avg_color[2] * 1.5:
-                    # Strong boost for cricket if it's red and circular (cricket ball)
-                    if is_circular and is_small_object:
-                        category_scores['cricket'] += 0.5
-                    else:
-                        category_scores['cricket'] += 0.25
-                
-                # Black and white pattern - likely football
-                if (r_hist[7] + g_hist[7] + b_hist[7] > 0.2) and (r_hist[0] + g_hist[0] + b_hist[0] > 0.2):
-                    if is_circular and not is_small_object:  # Larger circular object
-                        category_scores['football'] += 0.4
-                    else:
-                        category_scores['football'] += 0.2
-                
-                # Green dominant - likely cricket or football field
-                elif avg_color[1] > avg_color[0] and avg_color[1] > avg_color[2]:
-                    if avg_color[1] > 120:  # Brighter green
-                        category_scores['cricket'] += 0.25
-                    else:
-                        category_scores['football'] += 0.25
-                
-                # Brown/wood tones - likely table games
-                elif avg_color[0] > 100 and avg_color[1] > 60 and avg_color[2] < 80:
-                    category_scores['table_games'] += 0.25
-                
-                # White/blue dominant - likely badminton
-                elif avg_color[2] > avg_color[0] and avg_color[2] > avg_color[1]:
-                    category_scores['badminton'] += 0.25
-                
-                # Check for specific color patterns
-                # High green with white lines - football field
-                if g_hist[5] + g_hist[6] > 0.3 and r_hist[7] + b_hist[7] > 0.1:
-                    category_scores['football'] += 0.2
-                
-                # Indoor wood colors - table games
-                if r_hist[4] + r_hist[5] > 0.3 and g_hist[3] + g_hist[4] > 0.2:
-                    category_scores['table_games'] += 0.2
-                
-                # Blue court colors - badminton
-                if b_hist[5] + b_hist[6] > 0.3:
-                    category_scores['badminton'] += 0.2
-                
-                # Cricket-specific: red leather ball detection
-                if r_hist[4] + r_hist[5] > 0.3 and g_hist[2] + g_hist[3] < 0.2 and b_hist[2] + b_hist[3] < 0.2:
-                    if is_circular and is_small_object:
-                        category_scores['cricket'] += 0.4  # Stronger boost for cricket balls
-            except Exception as e:
-                # If color analysis fails, continue without it
-                print(f"Color analysis error: {e}")
+                        # Calculate shape regularity
+                        hull = cv2.convexHull(largest_contour)
+                        hull_area = cv2.contourArea(hull)
+                        contour_area = cv2.contourArea(largest_contour)
+                        solidity = contour_area/hull_area if hull_area > 0 else 0
+                        
+                        # Strong indicators of cricket helmet
+                        if (red_ratio > 0.15 and  # Significant red color
+                            vertical_lines >= 3 and  # Grill pattern
+                            is_helmet_ratio and  # Correct shape
+                            solidity > 0.7):  # Solid shape
+                            
+                            category_scores['cricket'] += 1.5  # Very strong boost
+                            return {
+                                'category': 'cricket',
+                                'confidence': 0.9,
+                                'all_scores': {cat: float(score) for cat, score in category_scores.items()}
+                            }
+            
+            except Exception as feature_error:
+                print(f"Feature detection error: {feature_error}")
                 pass
             
-            # Apply confidence threshold and boost dominant category
-            max_score = max(category_scores.values())
-            if max_score > 0:
-                # Boost the highest scoring category to increase precision
-                predicted_category = max(category_scores, key=category_scores.get)
-                category_scores[predicted_category] *= 1.2
-            
-            # Get the highest scoring category
-            predicted_category = max(category_scores, key=category_scores.get)
-            confidence = category_scores[predicted_category]
-            
-            # Normalize confidence score
+            # Balance confidence thresholds for all categories
+            min_confidence_thresholds = {
+                'cricket': 0.4,    # Slightly lower threshold for cricket
+                'football': 0.5,   # Higher threshold for football to avoid false positives
+                'badminton': 0.45,
+                'table_games': 0.45
+            }
+
+            # Normalize scores
             total_score = sum(category_scores.values())
             if total_score > 0:
                 normalized_scores = {cat: score/total_score for cat, score in category_scores.items()}
             else:
                 normalized_scores = category_scores
             
-            # Apply confidence threshold for "unknown" category
-            if normalized_scores[predicted_category] < 0.4:
+            # Get predicted category
+            predicted_category = max(normalized_scores, key=normalized_scores.get)
+            
+            # Apply category-specific confidence thresholds
+            if normalized_scores[predicted_category] < min_confidence_thresholds[predicted_category]:
                 return {
                     'category': 'unknown',
                     'confidence': 0.0,
                     'all_scores': {cat: float(score) for cat, score in normalized_scores.items()}
                 }
                 
+            # Before final category selection, add additional verification
+            if predicted_category == 'football':
+                # If there are any helmet-like features, require higher confidence
+                if aspect_ratio >= 1.1 and aspect_ratio <= 1.6:
+                    min_confidence_thresholds['football'] = 0.7  # Much higher threshold
+                    
+                # Check if cricket is second highest with decent confidence
+                scores_list = sorted([(score, cat) for cat, score in normalized_scores.items()], reverse=True)
+                if len(scores_list) > 1 and scores_list[1][1] == 'cricket' and scores_list[1][0] > 0.3:
+                    if normalized_scores['football'] < 0.7:  # If football confidence isn't very high
+                        predicted_category = 'cricket'
+                        normalized_scores['cricket'] = normalized_scores['football']
+                        normalized_scores['football'] *= 0.3
+
             return {
                 'category': predicted_category,
                 'confidence': float(normalized_scores[predicted_category]),
