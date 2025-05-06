@@ -1,0 +1,188 @@
+{% load custom_filters %}
+<!-- Order Details -->
+<div class="mb-3">
+    <p class="mb-1"><strong>Customer:</strong> {{ order.customer.name }}</p>
+    <p class="mb-1"><strong>Phone:</strong> {{ order.customer.phone }}</p>
+    <p class="mb-1"><strong>Address:</strong> {{ order.customer.address }}</p>
+    <p class="mb-1"><strong>Pincode:</strong> {{ order.customer.pincode }}</p>
+    <p class="mb-1"><strong>Amount:</strong> ₹{{ order.total_amount }}</p>
+    <p class="mb-1"><strong>Order Date:</strong> {{ order.order_date|date:"F d, Y g:i A" }}</p>
+    {% if order.id in failed_order_ids %}
+        <div class="alert alert-warning mt-2">
+            <small><i class="fas fa-exclamation-triangle"></i> This order had a failed delivery attempt. Please reassign to a different delivery partner.</small>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Order Items Section -->
+<div class="order-items">
+    <h6>Order Items:</h6>
+    <div class="table-responsive">
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order.items.all %}
+                {% with subtotal=item.quantity|multiply:item.price %}
+                <tr>
+                    <td>{{ item.product_name }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>₹{{ item.price }}</td>
+                    <td>₹{{ subtotal }}</td>
+                </tr>
+                {% endwith %}
+                {% endfor %}
+                {% with subtotal=order.total_amount|multiply:"0.909090909" %}
+                <tr class="table-secondary">
+                    <td colspan="3" class="text-end"><strong>Tax (10%):</strong></td>
+                    <td>₹{{ subtotal|calculate_tax }}</td>
+                </tr>
+                <tr class="table-info">
+                    <td colspan="3" class="text-end"><strong>Total Amount:</strong></td>
+                    <td><strong>₹{{ order.total_amount }}</strong></td>
+                </tr>
+                {% endwith %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Assign/Reassign Button -->
+{% if not order.assigned_delivery %}
+    <!-- New Order - Show Assign Button -->
+    <button type="button" 
+            class="btn btn-primary assign-btn" 
+            data-bs-toggle="modal" 
+            data-bs-target="#assignModal{{ order.id }}">
+        Assign Delivery Partner
+    </button>
+{% elif order.id in failed_order_ids %}
+    <!-- Failed Order - Show Reassign Button -->
+    <button type="button" 
+            class="btn btn-warning assign-btn" 
+            data-bs-toggle="modal" 
+            data-bs-target="#assignModal{{ order.id }}">
+        Reassign Delivery Partner
+    </button>
+{% endif %}
+
+<!-- Assignment Modal -->
+<div class="modal fade" id="assignModal{{ order.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header {% if order.id in failed_order_ids %}bg-warning{% else %}bg-primary{% endif %} text-white">
+                <h5 class="modal-title">
+                    {% if order.id in failed_order_ids %}
+                        Reassign Delivery Partner for Order #{{ order.id }}
+                    {% else %}
+                        Assign Delivery Partner for Order #{{ order.id }}
+                    {% endif %}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% if order.id in failed_order_ids %}
+                    <div class="alert alert-warning mb-3">
+                        <i class="fas fa-exclamation-triangle"></i> Previous delivery attempt failed. Please assign to a different delivery partner.
+                    </div>
+                {% endif %}
+                <div class="order-summary mb-4">
+                    <h6>Order Summary:</h6>
+                    <p class="mb-1">Customer: {{ order.customer.name }}</p>
+                    <p class="mb-1">Delivery Area Pincode: {{ order.customer.pincode }}</p>
+                    <p class="mb-1">Total Amount: ₹{{ order.total_amount }}</p>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label"><strong>Available Delivery Partners for Pincode {{ order.customer.pincode }}:</strong></label>
+                    <div class="delivery-partners-list">
+                        {% if not order.matching_delivery_boys %}
+                            <div class="alert alert-danger mt-3">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                <strong>No Delivery Coverage!</strong>
+                                <p class="mb-0 mt-2">
+                                    We currently don't have any delivery partners registered for pincode {{ order.customer.pincode }}. 
+                                    Please check back later or contact support for assistance.
+                                </p>
+                            </div>
+                        {% elif not order.available_delivery_boys %}
+                            <div class="alert alert-warning mt-3">
+                                <i class="fas fa-clock me-2"></i>
+                                <strong>All Partners Busy!</strong>
+                                <p class="mb-0 mt-2">
+                                    All delivery partners for pincode {{ order.customer.pincode }} are currently busy with other deliveries. 
+                                    Please try again in a few minutes.
+                                </p>
+                                <hr>
+                                <p class="mb-0">
+                                    <small>
+                                        <i class="fas fa-info-circle"></i> 
+                                        We have {{ order.matching_delivery_boys|length }} registered partner{% if order.matching_delivery_boys|length > 1 %}s{% endif %} for this area who will be available soon.
+                                    </small>
+                                </p>
+                            </div>
+                        {% else %}
+                            {% for boy in order.matching_delivery_boys %}
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input delivery-boy-select" 
+                                           type="radio" 
+                                           name="deliveryBoy{{ order.id }}" 
+                                           value="{{ boy.id }}"
+                                           id="deliveryBoy{{ order.id }}{{ boy.id }}"
+                                           {% if boy.id == order.best_delivery_boy.id %}checked{% endif %}
+                                           {% if not boy.is_available %}disabled{% endif %}>
+                                    <label class="form-check-label {% if not boy.is_available %}text-muted{% endif %}" 
+                                           for="deliveryBoy{{ order.id }}{{ boy.id }}">
+                                        {{ boy.user.name }}
+                                        {% if boy.id == order.best_delivery_boy.id %}
+                                            <span class="badge bg-info">Recommended</span>
+                                        {% endif %}
+                                        {% if boy.is_available %}
+                                            <span class="badge bg-success">Available</span>
+                                        {% else %}
+                                            <span class="badge bg-warning">Currently Unavailable</span>
+                                        {% endif %}
+                                        <br>
+                                        <small class="text-muted">
+                                            Experience: {{ boy.total_deliveries }} deliveries
+                                            {% if boy.current_rating %}
+                                                | Rating: {{ boy.current_rating|floatformat:1 }}/5
+                                            {% endif %}
+                                            | Vehicle: {{ boy.vehicle_number }}
+                                        </small>
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" 
+                                    class="btn btn-primary confirm-assign" 
+                                    data-order-id="{{ order.id }}"
+                                    {% if not order.available_delivery_boys %}disabled{% endif %}>
+                                Confirm Assignment
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#assignModal{{ order.id }}').on('show.bs.modal', function (e) {
+        if ($('#deliveryBoy{{ order.id }}{{ order.best_delivery_boy.id }}').length) {
+            $('#deliveryBoy{{ order.id }}{{ order.best_delivery_boy.id }}').prop('checked', true);
+        }
+    });
+});
+</script> 

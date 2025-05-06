@@ -13,3 +13,13 @@ def multiply(value, arg):
         return val * arg
     except (ValueError, TypeError, decimal.InvalidOperation):
         return Decimal('0')
+
+@register.filter
+def calculate_tax(amount):
+    """Calculate 10% tax from the total amount"""
+    try:
+        amount = Decimal(str(amount))
+        tax = amount * Decimal('0.10')
+        return round(tax, 2)
+    except:
+        return 0

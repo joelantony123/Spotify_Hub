@@ -170,9 +170,9 @@
         <div class="col-md-4">
           <div class="cart_total" style="color: black; background-color: rgba(255, 190, 51, 0.9);">
             <h4>Cart Total</h4>
-            <p>Subtotal: ${{ cart_total }}</p>
-            <p>Tax: ₹{{ tax }}</p>
-            <h5>Total: ${{ total_with_tax }}</h5>
+            <p>Subtotal: ₹{{ cart_total|floatformat:2 }}</p>
+            <p>Tax: ₹{{ tax|floatformat:2 }}</p>
+            <h5>Total: ₹{{ total_with_tax|floatformat:2 }}</h5>
             <button id="checkout-button" class="btn btn-block order_online" style="background-color: rgba(0, 123, 255, 0.8); color: white; width: 200px; margin: 0 auto;">
                 Proceed to Payment
             </button>
@@ -298,36 +298,46 @@
   <script>
     const stripe = Stripe('{{ stripe_publishable_key }}');
     const checkoutButton = document.getElementById('checkout-button');
+    const totalAmount = {{ total_with_tax|floatformat:2 }};
 
     checkoutButton.addEventListener('click', function() {
         // Disable the button to prevent multiple clicks
         checkoutButton.disabled = true;
         
         // Create checkout session
-        fetch('{% url "create_checkout_session" %}')
-            .then(function(response) {
-                return response.json();
+        fetch('{% url "create_checkout_session" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                total_amount: totalAmount
             })
-            .then(function(session) {
-                if (session.error) {
-                    alert(session.error);
-                    checkoutButton.disabled = false;
-                    return;
-                }
-                // Redirect to Stripe Checkout
-                return stripe.redirectToCheckout({ sessionId: session.sessionId });
-            })
-            .then(function(result) {
-                if (result.error) {
-                    alert(result.error.message);
-                    checkoutButton.disabled = false;
-                }
-            })
-            .catch(function(error) {
-                console.error('Error:', error);
-                alert('An error occurred. Please try again.');
+        })
+        .then(function(response) {
+            return response.json();
+        })
+        .then(function(session) {
+            if (session.error) {
+                alert(session.error);
                 checkoutButton.disabled = false;
-            });
+                return;
+            }
+            // Redirect to Stripe Checkout
+            return stripe.redirectToCheckout({ sessionId: session.sessionId });
+        })
+        .then(function(result) {
+            if (result.error) {
+                alert(result.error.message);
+                checkoutButton.disabled = false;
+            }
+        })
+        .catch(function(error) {
+            console.error('Error:', error);
+            alert('An error occurred. Please try again.');
+            checkoutButton.disabled = false;
+        });
     });
   </script>
 </body>

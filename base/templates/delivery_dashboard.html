@@ -58,6 +58,7 @@
                         <h5 class="card-title" style="color: black;">My Stats</h5>
                         <p class="card-text" style="color: black;">Rating: {{ delivery_boy.rating }}/5.0</p>
                         <p class="card-text" style="color: black;">Total Deliveries: {{ delivery_boy.total_deliveries }}</p>
+                        <p class="card-text" style="color: black;">Total Amount Received: ₹{{ total_amount_received }}</p>
                         <!-- <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="availabilityToggle" 
                                    {% if delivery_boy.is_available %}checked{% endif %}>
@@ -120,6 +121,48 @@
             </div>
 
             <div class="col-md-12 mt-4" style="background-color: rgba(255, 255, 255, 0.7); border-radius: 10px; padding: 20px;">
+                <h4 style="color: black;">Cancelled Orders</h4>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr style="background-color:#ffbe33;">
+                                <th>Order id</th>
+                                <th>Customer</th>
+                                <th>Delivery Address</th>
+                                <th>Items</th>
+                                <th>Order Date</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in cancelled_orders %}
+                            <tr>
+                                <td>#{{ order.id }}</td>
+                                <td>{{ order.customer.name }}</td>
+                                <td>{{ order.customer.address }}</td>
+                                <td>
+                                    <ul class="list-unstyled mb-0">
+                                        {% for item in order.items.all %}
+                                        <li>{{ item.product_name }} x{{ item.quantity }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </td>
+                                <td>{{ order.order_date|date:"F d, Y g:i A" }}</td>
+                                <td>
+                                    <span class="badge bg-danger">Cancelled</span>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center">No cancelled orders.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="col-md-12 mt-4" style="background-color: rgba(255, 255, 255, 0.7); border-radius: 10px; padding: 20px;">
                 <h4 style="color: black;">Completed Deliveries</h4>
                 <div class="table-responsive">
                     <table class="table table-hover">
@@ -147,7 +190,7 @@
                                         {% endfor %}
                                     </ul>
                                 </td>
-                                <td>{{ assignment.assigned_date|date:"F d, Y H:i" }}</td>
+                                <td>{{ assignment.assigned_date|date:"F d, Y g:i A" }}</td>
                                 <td>
                                     <span class="badge {% if assignment.delivery_status == 'delivered' %}bg-success{% else %}bg-danger{% endif %}">
                                         {{ assignment.get_delivery_status_display }}
@@ -155,11 +198,15 @@
                                 </td>
                                 <td>
                                     <small>Payment: 
-                                        <span class="badge 
-                                            {% if assignment.order.status == 'paid' %}bg-success
-                                            {% elif assignment.order.status == 'pending' %}bg-warning
-                                            {% else %}bg-danger{% endif %}">
-                                            {{ assignment.order.status|title }}
+                                        <span class="badge {% if assignment.payment_processed %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {% if assignment.payment_processed %}
+                                            Paid ₹50
+                                            {% if assignment.payment_date %}
+                                                ({{ assignment.payment_date|date:"M d, Y" }})
+                                            {% endif %}
+                                        {% else %}
+                                            Pending
+                                        {% endif %}
                                         </span>
                                     </small>
                                 </td>

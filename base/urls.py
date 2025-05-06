@@ -54,4 +54,5 @@ urlpatterns = [
     path('predict_category/', views.predict_category_ajax, name='predict_category_ajax'),
     path('create-delivery-payment-intent/', views.create_delivery_payment_intent, name='create_delivery_payment_intent'),
     path('process-delivery-payment/', views.process_delivery_payment, name='process_delivery_payment'),
+    path('cancel-order/<int:order_id>/', views.cancel_order, name='cancel_order'),
 ]

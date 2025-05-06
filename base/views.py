@@ -23,7 +23,7 @@ from googleapiclient.discovery import build
 from django.conf import settings
 from django.shortcuts import redirect
 import json
-from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.http import JsonResponse
 from django.contrib import messages
 import stripe
@@ -45,6 +45,9 @@ import google.generativeai as genai
 from .models import Order, DeliveryBoy, OrderAssigned
 from django.db.models import Q
 from django.utils import timezone
+from django.db.models import Count, Q
+from django.db.models.functions import Coalesce
+from .product_categorizer import predict_image_category  # Add this import
 
 stripe.api_key = settings.STRIPE_SECRET_KEY
 
@@ -873,6 +876,14 @@ def create_checkout_session(request):
         cart = Cart.objects.get(user=customer)
         cart_items = cart.items.all()
         
+        # Calculate totals
+        cart_total = sum(item.product.price * item.quantity for item in cart_items)
+        tax = Decimal('0.10') * cart_total  # 10% tax
+        total_with_tax = cart_total + tax
+        
+        # Convert total to paise (Indian currency's smallest unit)
+        amount_in_paise = int(total_with_tax * 100)
+        
         # Create line items for Stripe
         line_items = [{
             'price_data': {
@@ -886,6 +897,19 @@ def create_checkout_session(request):
             'quantity': item.quantity,
         } for item in cart_items]
 
+        # Add tax as a separate line item
+        line_items.append({
+            'price_data': {
+                'currency': 'inr',
+                'product_data': {
+                    'name': 'Tax (10%)',
+                    'description': 'Sales tax',
+                },
+                'unit_amount': int(tax * 100),  # Convert to paise
+            },
+            'quantity': 1,
+        })
+
         # Create Stripe checkout session
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=['card'],
@@ -896,6 +920,7 @@ def create_checkout_session(request):
             cancel_url=request.build_absolute_uri(reverse('payment_cancelled')),
             metadata={
                 'customer_id': customer.customer_id,
+                'total_amount': str(total_with_tax)
             }
         )
         
@@ -912,16 +937,14 @@ def payment_success(request):
         if (session_id):
             session = stripe.checkout.Session.retrieve(session_id)
             customer_id = session.metadata.get('customer_id')
+            total_amount = float(session.metadata.get('total_amount'))
             
             customer = Customer.objects.get(customer_id=customer_id)
             cart = Cart.objects.get(user=customer)
             
-            # Calculate total amount
-            total_amount = sum(item.quantity * item.product.price for item in cart.items.all())
-            
-            # Create order with correct customer field
+            # Create order
             order = Order.objects.create(
-                customer=customer,  # Changed from user to customer
+                customer=customer,
                 total_amount=total_amount,
                 status='paid',
                 payment_id=session.payment_intent
@@ -931,17 +954,50 @@ def payment_success(request):
             for cart_item in cart.items.all():
                 OrderItem.objects.create(
                     order=order,
-                    product=cart_item.product,  # Add this line
+                    product=cart_item.product,
                     product_name=cart_item.product.name,
                     quantity=cart_item.quantity,
                     price=cart_item.product.price
                 )
             
+            # Get all approved delivery boys
+            delivery_boys = DeliveryBoy.objects.filter(
+                status='approved'
+            ).select_related('user')
+
+            # Find best delivery boy using existing function
+            best_boy = get_best_delivery_boy(order, delivery_boys)
+            
+            if best_boy:
+                # Create assignment
+                OrderAssigned.objects.create(
+                    order=order,
+                    delivery_boy=best_boy,
+                    delivery_status='pending',
+                    assigned_date=timezone.now()
+                )
+                
+                # Update delivery boy status
+                best_boy.is_available = False
+                best_boy.total_deliveries += 1
+                best_boy.save()
+                
+                # Update order status
+                order.status = 'assigned'
+                order.save()
+                
+                messages.success(request, 'Payment successful! Your order has been placed and assigned to a delivery partner.')
+            else:
+                messages.warning(request, 'Payment successful! Your order has been placed. We will assign a delivery partner soon.')
+            
             # Clear cart
             cart.items.all().delete()
             
-            messages.success(request, 'Payment successful! Your order has been placed.')
-            return render(request, 'payment_success.html')
+            return render(request, 'payment_success.html', {
+                'order': order,
+                'has_delivery_boy': bool(best_boy)
+            })
+            
     except Exception as e:
         logger.error(f"Error processing successful payment: {str(e)}")
         messages.error(request, 'Error processing payment confirmation.')
@@ -1068,7 +1124,7 @@ def download_invoice(request, order_id):
         # Order details
         p.setFont("Helvetica", 12)
         p.drawString(50, 720, f"Order #: {order.id}")
-        p.drawString(50, 700, f"Date: {order.order_date.strftime('%Y-%m-%d')}")
+        p.drawString(50, 700, f"Date: {order.order_date.strftime('%B %d, %Y %I:%M %p')}")
         p.drawString(50, 680, f"Customer: {order.customer.name}")
         
         # Items table
@@ -1131,7 +1187,7 @@ def admin_order_history(request):
             messages.error(request, 'Unauthorized access.')
             return redirect('login')
             
-        # Get all orders grouped by date
+        # Get all orders grouped by date, excluding cancelled orders from delivery status checks
         orders = Order.objects.all().order_by('-order_date')
         
         # Group orders by date
@@ -1140,7 +1196,17 @@ def admin_order_history(request):
             date = order.order_date.date()
             if date not in orders_by_date:
                 orders_by_date[date] = []
+            # Add order to the date group
             orders_by_date[date].append(order)
+            
+        # Check for failed deliveries (excluding cancelled orders)
+        failed_deliveries = OrderAssigned.objects.filter(
+            delivery_status='failed',
+            order__status__in=['paid', 'assigned', 'picked_up', 'in_transit']
+        ).count()
+        
+        if failed_deliveries > 0:
+            messages.warning(request, f'There are {failed_deliveries} failed deliveries that need to be reassigned.')
             
         context = {
             'orders_by_date': orders_by_date,
@@ -1385,7 +1451,7 @@ def get_new_messages(request, user_id):
         
         messages_data = [{
             'message': msg.message,
-            'timestamp': msg.timestamp.strftime("%b %d, %Y %H:%M"),
+            'timestamp': msg.timestamp.strftime("%b %d, %Y %I:%M %p"),
             'is_sender': msg.sender == current_customer
         } for msg in reversed(recent_messages)]
         
@@ -1464,7 +1530,7 @@ def send_chat_message(request):
         return JsonResponse({
             'status': 'success',
             'message': message_text,
-            'timestamp': message.timestamp.strftime("%b %d, %Y %H:%M")
+            'timestamp': message.timestamp.strftime("%b %d, %Y %I:%M %p")
         })
         
     except Exception as e:
@@ -1610,7 +1676,7 @@ def gemini_chat(request):
                         if orders:
                             response = "Here are your recent orders:\n"
                             for order in orders:
-                                response += f"Order #{order.id}: {order.status}, Total: ${order.total_amount}, Date: {order.order_date.strftime('%Y-%m-%d')}\n"
+                                response += f"Order #{order.id}: {order.status}, Total: ${order.total_amount}, Date: {order.order_date.strftime('%B %d, %Y %I:%M %p')}\n"
                         else:
                             response = "You don't have any orders yet. Would you like to browse our products?"
                         return JsonResponse({
@@ -1717,10 +1783,17 @@ def delivery_dashboard(request):
             messages.error(request, 'Your account is not approved yet.')
             return redirect('delivery_login')
             
-        # Get assigned orders
+        # Get assigned orders (excluding cancelled orders)
         assigned_orders = Order.objects.filter(
             assigned_delivery__delivery_boy=delivery_boy,
-            assigned_delivery__delivery_status__in=['pending', 'picked_up', 'in_transit']
+            assigned_delivery__delivery_status__in=['pending', 'picked_up', 'in_transit'],
+            status__in=['assigned', 'picked_up', 'in_transit']  # Only include active orders
+        )
+        
+        # Get cancelled orders
+        cancelled_orders = Order.objects.filter(
+            assigned_delivery__delivery_boy=delivery_boy,
+            status='cancelled'
         )
         
         # Get completed deliveries
@@ -1729,10 +1802,27 @@ def delivery_dashboard(request):
             delivery_status='delivered'
         ).order_by('-assigned_date')
         
+        # Calculate total deliveries based on actual completed deliveries
+        total_deliveries = completed_deliveries.count()
+        
+        # Update the delivery boy's total_deliveries to match actual completed deliveries
+        if delivery_boy.total_deliveries != total_deliveries:
+            delivery_boy.total_deliveries = total_deliveries
+            delivery_boy.save()
+        
+        # Calculate total amount received (₹50 per delivery) only for paid deliveries
+        total_amount_received = OrderAssigned.objects.filter(
+            delivery_boy=delivery_boy,
+            delivery_status='delivered',
+            payment_processed=True
+        ).count() * 50
+        
         context = {
             'delivery_boy': delivery_boy,
             'assigned_orders': assigned_orders,
+            'cancelled_orders': cancelled_orders,
             'completed_deliveries': completed_deliveries,
+            'total_amount_received': total_amount_received
         }
         return render(request, 'delivery_dashboard.html', context)
     except (Customer.DoesNotExist, DeliveryBoy.DoesNotExist):
@@ -1955,6 +2045,30 @@ def delivery_profile_edit(request):
         messages.error(request, 'Profile not found.')
         return redirect('delivery_login')
 
+def get_best_delivery_boy(order, delivery_boys):
+    """
+    Get the best delivery boy based on total deliveries.
+    Returns the delivery boy with matching pincode, least total deliveries and who is available.
+    """
+    # First filter by matching pincode
+    matching_boys = [boy for boy in delivery_boys if boy.pincode == order.customer.pincode]
+    
+    if not matching_boys:
+        return None
+        
+    # Then filter available boys
+    available_boys = [boy for boy in matching_boys if boy.is_available]
+    
+    if not available_boys:
+        return None
+        
+    # Sort available boys by total deliveries (ascending)
+    # Sort available boys by total deliveries (ascending)
+    available_boys.sort(key=lambda x: x.total_deliveries)
+    
+    # Return the boy with least deliveries
+    return available_boys[0] if available_boys else None
+
 @never_cache
 def work_assign(request):
     # Check if user is logged in
@@ -1970,29 +2084,44 @@ def work_assign(request):
         # Strict admin check
         if customer.user_type != 'admin':
             messages.error(request, 'Access denied. Admin privileges required.')
-            
-            # Redirect based on user type
-            if customer.user_type == 'delivery_boy':
-                return redirect('delivery_dashboard')
-            else:
-                return redirect('home')
+            return redirect('home')
         
-        # Admin-only code starts here
-        pending_orders = Order.objects.filter(
-            status='paid'
+        # Get all approved delivery boys with their current assignments
+        delivery_boys = DeliveryBoy.objects.filter(
+            status='approved'
         ).select_related(
-            'customer'
-        ).prefetch_related(
-            'items'
+            'user'
+        ).annotate(
+            current_assignments=Count(
+                'orderassigned',
+                filter=Q(orderassigned__delivery_status__in=['pending', 'picked_up', 'in_transit'])
+            )
+        )
+        
+        # Mark delivery boys as available if they have no current assignments
+        for boy in delivery_boys:
+            boy.is_available = boy.current_assignments == 0
+            boy.save()
+
+        # Get failed orders
+        failed_orders = Order.objects.filter(
+            Q(status='failed') |  
+            Q(assigned_delivery__delivery_status='failed')
+        ).select_related('customer').prefetch_related('items')
+
+        # Get new orders that need assignment
+        new_orders = Order.objects.filter(
+            status='paid'
         ).exclude(
             id__in=OrderAssigned.objects.values('order_id')
-        ).order_by('-order_date')
+        ).select_related('customer').prefetch_related('items')
+
+        # Get list of failed order IDs
+        failed_order_ids = list(OrderAssigned.objects.filter(
+            delivery_status='failed'
+        ).values_list('order_id', flat=True))
         
-        # Modified delivery boys query to show all approved delivery boys
-        delivery_boys = DeliveryBoy.objects.filter(
-            status='approved'  # Removed is_available=True filter
-        ).select_related('user')
-        
+        # Get currently assigned orders
         assigned_orders = OrderAssigned.objects.filter(
             delivery_status__in=['pending', 'picked_up', 'in_transit']
         ).select_related(
@@ -2002,6 +2131,7 @@ def work_assign(request):
             'delivery_boy__user'
         ).order_by('-assigned_date')
 
+        # Get delivered orders
         delivered_orders = OrderAssigned.objects.filter(
             delivery_status='delivered'
         ).select_related(
@@ -2011,13 +2141,41 @@ def work_assign(request):
             'delivery_boy__user'
         ).order_by('-assigned_date')
         
+        # For each order, find matching delivery boys and best delivery boy
+        for order in new_orders:
+            # Filter delivery boys by pincode
+            matching_boys = [boy for boy in delivery_boys if boy.pincode == order.customer.pincode]
+            order.matching_delivery_boys = matching_boys
+            order.available_delivery_boys = [boy for boy in matching_boys if boy.is_available]
+            
+            # Find best delivery boy (available, matching pincode, least deliveries)
+            available_matching_boys = [boy for boy in matching_boys if boy.is_available]
+            if available_matching_boys:
+                order.best_delivery_boy = min(available_matching_boys, key=lambda x: x.total_deliveries)
+            else:
+                order.best_delivery_boy = None
+        
+        # Do the same for failed orders
+        for order in failed_orders:
+            matching_boys = [boy for boy in delivery_boys if boy.pincode == order.customer.pincode]
+            order.matching_delivery_boys = matching_boys
+            order.available_delivery_boys = [boy for boy in matching_boys if boy.is_available]
+            
+            available_matching_boys = [boy for boy in matching_boys if boy.is_available]
+            if available_matching_boys:
+                order.best_delivery_boy = min(available_matching_boys, key=lambda x: x.total_deliveries)
+            else:
+                order.best_delivery_boy = None
+        
         context = {
-            'pending_orders': pending_orders,
+            'failed_orders': failed_orders,
+            'new_orders': new_orders,
             'delivery_boys': delivery_boys,
             'assigned_orders': assigned_orders,
             'delivered_orders': delivered_orders,
             'is_admin': True,
-            'current_customer': customer
+            'current_customer': customer,
+            'failed_order_ids': failed_order_ids
         }
         
         return render(request, 'Work_assign.html', context)
@@ -2028,67 +2186,104 @@ def work_assign(request):
     except Exception as e:
         logger.error(f"Error in work assign view: {str(e)}")
         messages.error(request, 'An error occurred while loading the page')
-        return redirect('work_assign')
+        return redirect('admin_dashboard')
 
 @csrf_exempt
 def assign_delivery_boy(request):
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-    
+        
     # Check if user is admin
     customer_id = request.session.get('customer_id')
     if not customer_id:
         return JsonResponse({'status': 'error', 'message': 'Please login first'})
         
     try:
+        # Verify admin access
         admin_user = Customer.objects.get(customer_id=customer_id)
         if admin_user.user_type != 'admin':
             return JsonResponse({'status': 'error', 'message': 'Unauthorized access'})
             
         order_id = request.POST.get('order_id')
         delivery_boy_id = request.POST.get('delivery_boy_id')
-
-        # Validate input
+        
         if not order_id or not delivery_boy_id:
-            return JsonResponse({'status': 'error', 'message': 'Missing required parameters'})
-
-        # Get order and delivery boy
-        order = Order.objects.get(id=order_id, status='paid')
-        delivery_boy = DeliveryBoy.objects.get(id=delivery_boy_id, is_available=True)
-
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Missing required parameters'
+            })
+            
+        # Get the order and delivery boy
+        order = Order.objects.get(id=order_id)
+        delivery_boy = DeliveryBoy.objects.get(id=delivery_boy_id)
+        
         # Verify pincode match
         if order.customer.pincode != delivery_boy.pincode:
             return JsonResponse({
                 'status': 'error',
                 'message': 'Delivery partner pincode does not match order location'
             })
-
-        # Create assignment
-        OrderAssigned.objects.create(
+            
+        # Verify delivery boy is available
+        if not delivery_boy.is_available:
+            return JsonResponse({
+                'status': 'error',
+                'message': 'Selected delivery partner is not available'
+            })
+        
+        # Check if this is a reassignment (previous failed delivery)
+        previous_assignment = OrderAssigned.objects.filter(
+            order=order,
+            delivery_status='failed'
+        ).first()
+        
+        if previous_assignment:
+            # Delete the previous failed assignment
+            previous_assignment.delete()
+        
+        # Create new assignment
+        assignment = OrderAssigned.objects.create(
             order=order,
             delivery_boy=delivery_boy,
-            delivery_status='pending'
+            delivery_status='pending',
+            assigned_date=timezone.now()
         )
-
-        # Update order status
-        order.status = 'assigned'
-        order.save()
-
-        # Update delivery boy availability
+        
+        # Update delivery boy availability and stats
         delivery_boy.is_available = False
         delivery_boy.total_deliveries += 1
         delivery_boy.save()
-
-        return JsonResponse({'status': 'success'})
-
+        
+        # Update order status
+        order.status = 'assigned'
+        order.save()
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Order #{order_id} assigned to {delivery_boy.user.name}'
+        })
+        
     except Customer.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': 'User not found'})
+        return JsonResponse({
+            'status': 'error',
+            'message': 'User not found'
+        })
     except Order.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': 'Order not found or already assigned'})
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Order not found'
+        })
     except DeliveryBoy.DoesNotExist:
-        return JsonResponse({'status': 'error', 'message': 'Delivery partner not found or unavailable'})
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Delivery boy not found'
+        })
     except Exception as e:
-        return JsonResponse({'status': 'error', 'message': str(e)})
+        logger.error(f"Error assigning delivery boy: {str(e)}")
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        })
 
 @never_cache
 def view_assigned_history(request):
@@ -2185,12 +2380,24 @@ def update_delivery_status(request):
         order_assignment.save()
         
         # Update Order status and delivery boy availability based on delivery status
-        if new_status == 'accepted':
-            order.status = 'shipped'
+        if new_status == 'pending':
+            order.status = 'assigned'
+        elif new_status == 'picked_up':
+            order.status = 'picked_up'
+        elif new_status == 'in_transit':
+            order.status = 'in_transit'
         elif new_status == 'delivered':
             order.status = 'delivered'
             # Make delivery boy available again after successful delivery
             delivery_boy.is_available = True
+            delivery_boy.save()
+        elif new_status == 'failed':
+            # When delivery fails, set order status to 'failed'
+            order.status = 'failed'
+            # Make delivery boy available again
+            delivery_boy.is_available = True
+            # Decrement total deliveries since this one failed
+            delivery_boy.total_deliveries = max(0, delivery_boy.total_deliveries - 1)
             delivery_boy.save()
         
         order.save()
@@ -2367,70 +2574,64 @@ def create_delivery_payment_intent(request):
 
 @never_cache
 def process_delivery_payment(request):
-    order_id = request.GET.get('order_id')
-    payment_intent_id = request.GET.get('payment_intent')
-    
     try:
-        # Verify the order exists
-        order = get_object_or_404(Order, id=order_id)
-        order_assignment = get_object_or_404(OrderAssigned, order=order)
-        
-        # Retrieve the payment intent to confirm it's successful
-        payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
-        
-        if payment_intent.status == 'succeeded':
-            # Update the order assignment with payment details
-            order_assignment.payment_processed = True
-            order_assignment.payment_amount = Decimal('50.00')
-            order_assignment.payment_date = timezone.now()
-            order_assignment.save()
+        order_id = request.GET.get('order_id')
+        if not order_id:
+            messages.error(request, "Order ID is missing")
+            return redirect('admin_order_history')
             
-            # Update the success message to include the delivery boy's name
-            delivery_boy_name = order_assignment.delivery_boy.user.name
-            messages.success(request, f"Payment of ₹50 successfully processed for {delivery_boy_name} for delivery of Order #{order_id}")
-        else:
-            messages.error(request, "Payment processing failed. Please try again.")
+        # Get the order and its assigned delivery
+        order = Order.objects.get(id=order_id)
+        order_assignment = OrderAssigned.objects.get(order=order)
+        
+        # Mark the payment as processed
+        order_assignment.payment_processed = True
+        order_assignment.payment_date = timezone.now()
+        order_assignment.save()
+        
+        # Update the success message to include the delivery boy's name
+        delivery_boy_name = order_assignment.delivery_boy.user.name
+        messages.success(request, f"Payment of ₹50 successfully processed for {delivery_boy_name} for delivery of Order #{order_id}")
         
         return redirect('admin_order_history')
-        
     except Exception as e:
         logger.error(f"Error processing delivery payment: {str(e)}")
         messages.error(request, f"Error processing payment: {str(e)}")
         return redirect('admin_order_history')
 
+@require_POST
 @never_cache
-def admin_order_history(request):
-    customer_id = request.session.get('customer_id')
-    if not customer_id:
-        return redirect('login')
-        
+def cancel_order(request, order_id):
     try:
-        admin_user = Customer.objects.get(customer_id=customer_id)
-        if admin_user.user_type != 'admin':
-            messages.error(request, 'Unauthorized access.')
-            return redirect('login')
+        # Get the order and verify it belongs to the current user
+        order = Order.objects.get(
+            id=order_id,
+            customer__customer_id=request.session.get('customer_id')
+        )
+        
+        # Check if order can be cancelled (not delivered)
+        if order.assigned_delivery and order.assigned_delivery.delivery_status == 'delivered':
+            messages.error(request, 'Cannot cancel an order that has been delivered')
+            return redirect('purchase_history')
             
-        # Get all orders grouped by date
-        orders = Order.objects.all().order_by('-order_date')
+        # Update order status to cancelled
+        order.status = 'cancelled'
+        order.save()
         
-        # Group orders by date
-        orders_by_date = {}
-        for order in orders:
-            date = order.order_date.date()
-            if date not in orders_by_date:
-                orders_by_date[date] = []
-            orders_by_date[date].append(order)
-            
-        context = {
-            'orders_by_date': orders_by_date,
-            'stripe_publishable_key': settings.STRIPE_PUBLISHABLE_KEY,
-        }
+        # If there's an assigned delivery, update delivery boy status
+        if order.assigned_delivery:
+            delivery_boy = order.assigned_delivery.delivery_boy
+            if delivery_boy:
+                delivery_boy.is_available = True
+                delivery_boy.save()
         
-        return render(request, 'admin_order_history.html', context)
+        messages.success(request, f'Order #{order_id} has been cancelled successfully')
+        return redirect(f"{reverse('purchase_history')}?cancelled={order_id}&amount={order.total_amount}")
         
-    except Customer.DoesNotExist:
-        return redirect('login')
+    except Order.DoesNotExist:
+        messages.error(request, 'Order not found or unauthorized access')
+        return redirect('purchase_history')
     except Exception as e:
-        logger.error(f"Error in admin order history: {str(e)}")
-        messages.error(request, "An error occurred while loading the order history")
-        return redirect('admin_dashboard')
+        logger.error(f"Error cancelling order: {str(e)}")
+        messages.error(request, 'An error occurred while cancelling the order')
+        return redirect('purchase_history')

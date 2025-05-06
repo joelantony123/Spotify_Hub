@@ -126,7 +126,9 @@
                                                     {% endif %}
                                                 </td>
                                                 <td>
-                                                    {% if order.assigned_delivery and order.assigned_delivery.delivery_status == 'delivered' %}
+                                                    {% if order.status == 'cancelled' %}
+                                                        <span class="badge bg-danger">Cancelled</span>
+                                                    {% elif order.assigned_delivery and order.assigned_delivery.delivery_status == 'delivered' %}
                                                         {% if order.assigned_delivery.payment_processed %}
                                                             <span class="badge bg-success">Paid ₹50</span>
                                                             {% if order.assigned_delivery.payment_date %}
@@ -143,7 +145,13 @@
                                                             </button>
                                                         {% endif %}
                                                     {% else %}
-                                                        <span class="badge bg-secondary">Not Eligible</span>
+                                                        {% if order.assigned_delivery and order.assigned_delivery.delivery_status == 'failed' %}
+                                                            <a href="{% url 'work_assign' %}" class="btn btn-sm btn-warning">Reassign Order</a>
+                                                        {% elif not order.assigned_delivery %}
+                                                            <a href="{% url 'work_assign' %}" class="btn btn-sm btn-primary">Assign Order</a>
+                                                        {% else %}
+                                                            <span class="badge bg-secondary">Delivery in Progress</span>
+                                                        {% endif %}
                                                     {% endif %}
                                                 </td>
                                             </tr>

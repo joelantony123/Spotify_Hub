@@ -40,7 +40,7 @@
     <link href="{% static 'assets/css/responsive.css' %}" rel="stylesheet" />
     <style>
         body {
-            background: url("{% static 'assets/images/hero-bg.jpg' %}") no-repeat center center fixed;
+            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url("{% static 'assets/images/hero-bg.jpg' %}") no-repeat center center fixed;
             background-size: cover;
             position: relative;
             min-height: 100vh;
@@ -943,6 +943,446 @@
             height: 400px;
             border-radius: 8px;
         }
+
+        .file-upload-container {
+            margin-top: 20px;
+            text-align: center;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .file-upload-wrapper {
+            position: relative;
+            width: 100%;
+            height: 60px;
+            border: 2px dashed #ffbe33;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background-color: rgba(255, 190, 51, 0.1);
+        }
+
+        .file-upload-wrapper:hover {
+            border-color: #e69c00;
+            background-color: rgba(255, 190, 51, 0.2);
+        }
+
+        .file-upload-wrapper input[type="file"] {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .upload-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #ffbe33;
+        }
+
+        .upload-content i {
+            font-size: 24px;
+        }
+
+        .upload-text {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .file-name {
+            margin-top: 10px;
+            color: #ffbe33;
+            font-size: 14px;
+            display: none;
+        }
+
+        .predict-btn {
+            margin-top: 15px;
+            background-color: #ffbe33;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 500;
+            display: none;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .predict-btn:hover {
+            background-color: #e69c00;
+            transform: translateY(-2px);
+        }
+
+        .predict-btn i {
+            margin-right: 8px;
+        }
+
+        #predictionResult {
+            margin-top: 15px;
+            border-radius: 10px;
+        }
+
+        #predictionResult .alert {
+            border-radius: 10px;
+            background-color: rgba(255, 190, 51, 0.1);
+            border: 1px solid #ffbe33;
+            color: #ffbe33;
+        }
+
+        .or-divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 20px 0;
+            color: #ffbe33;
+        }
+
+        .or-divider::before,
+        .or-divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #ffbe33;
+        }
+
+        .or-divider span {
+            padding: 0 10px;
+            font-weight: 500;
+        }
+
+        /* Improved Contact Section Styles */
+        .contact_section {
+            padding: 80px 0;
+            position: relative;
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .contact_container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .contact_heading {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .contact_heading h2 {
+            font-size: 3.5rem;
+            color: #ffbe33;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .contact_heading p {
+            color: #ffbe33;
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+
+        .contact_form {
+            background: rgba(47, 47, 47, 0.9);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .form_group {
+            margin-bottom: 20px;
+        }
+
+        .form_control {
+            width: 100%;
+            padding: 18px 25px;
+            background: #ffffff;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 25px; /* Increased spacing between fields */
+        }
+
+        .form_control:focus {
+            border-color: #ffbe33;
+            box-shadow: 0 0 20px rgba(255, 190, 51, 0.2);
+            transform: translateY(-2px);
+            outline: none;
+        }
+
+        .form_control::placeholder {
+            color: #666;
+            opacity: 0.8;
+        }
+
+        select.form_control {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666666' d='M3 4l3 3 3-3'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 25px center;
+            padding-right: 45px; /* Space for the arrow */
+        }
+
+        textarea.form_control {
+            min-height: 150px;
+            margin-bottom: 30px; /* Extra space before button */
+            resize: none;
+        }
+
+        /* Specific styling for the last field (textarea) */
+        textarea.form_control {
+            min-height: 150px;
+            margin-bottom: 30px; /* Extra space before button */
+            resize: none;
+        }
+
+        /* Adjust select and date input spacing */
+        select.form_control,
+        input[type="date"].form_control {
+            margin-bottom: 25px;
+        }
+
+        /* Style for the submit button */
+        .submit_btn {
+            width: 100%;
+            padding: 18px;
+            background: #ffbe33;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 5px; /* Small space after the last field */
+        }
+
+        /* Placeholder styling */
+        .form_control::placeholder {
+            color: #666;
+            opacity: 0.8;
+        }
+
+        /* Custom select arrow */
+        select.form_control {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666666' d='M3 4l3 3 3-3'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 25px center;
+            padding-right: 45px; /* Space for the arrow */
+        }
+
+        /* Date input styling */
+        input[type="date"].form_control {
+            padding-right: 25px;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form_group {
+            animation: fadeInUp 0.5s ease forwards;
+            opacity: 0;
+        }
+
+        .form_group:nth-child(1) { animation-delay: 0.1s; }
+        .form_group:nth-child(2) { animation-delay: 0.2s; }
+        .form_group:nth-child(3) { animation-delay: 0.3s; }
+        .form_group:nth-child(4) { animation-delay: 0.4s; }
+        .form_group:nth-child(5) { animation-delay: 0.5s; }
+        .form_group:nth-child(6) { animation-delay: 0.6s; }
+
+        /* Mobile responsiveness */
+        @media (max-width: 768px) {
+            .contact_container {
+                padding: 0 15px;
+            }
+
+            .contact_heading h2 {
+                font-size: 2.5rem;
+            }
+
+            .contact_form {
+                padding: 30px 20px;
+            }
+        }
+
+        .search-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .search-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 15px 50px 15px 20px;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            color: #333;
+            background: #fff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-input:focus {
+            outline: none;
+            box-shadow: 0 2px 15px rgba(255, 190, 51, 0.2);
+        }
+
+        .search-button {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #ffbe33;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .search-button i {
+            color: #fff;
+            font-size: 18px;
+        }
+
+        .search-button:hover {
+            background: #e69c00;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 30px 0;
+            color: #ffbe33;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid rgba(255, 190, 51, 0.3);
+        }
+
+        .divider span {
+            padding: 0 15px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        .upload-container {
+            margin-top: 20px;
+        }
+
+        .upload-area {
+            position: relative;
+            border: 2px dashed rgba(255, 190, 51, 0.3);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+        }
+
+        .upload-area:hover {
+            border-color: #ffbe33;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .file-input {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .upload-text {
+            display: block;
+            color: #ffbe33;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+
+        .file-name {
+            margin-top: 10px;
+            color: #ffbe33;
+            font-size: 14px;
+        }
+
+        .predict-btn {
+            width: 100%;
+            padding: 15px;
+            margin-top: 15px;
+            background: #ffbe33;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .predict-btn:hover {
+            background: #e69c00;
+            transform: translateY(-2px);
+        }
+
+        .prediction-result {
+            margin-top: 15px;
+        }
+
+        .prediction-result .alert {
+            background: rgba(255, 190, 51, 0.1);
+            border: 1px solid rgba(255, 190, 51, 0.3);
+            color: #ffbe33;
+            padding: 15px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
     </style>
 </head>
 
@@ -1040,8 +1480,8 @@
                                     <g>
                                         <g>
                                             <path d="M215.04,389.55c-1.024-28.16-24.576-50.688-52.736-50.688c-29.696,1.536-52.224,26.112-51.2,55.296
-                   c1.024,28.16,24.064,50.688,52.224,50.688h1.024C193.536,443.31,216.576,418.734,215.04,389.55z">
-                                            </path>
+                   c1.024,28.16,24.064,50.688,52.224,50.688h1.024C193.536,443.31,216.576,418.734,215.04,389.55z"
+                          ></path>
                                         </g>
                                     </g>
                                 </svg>
@@ -1208,13 +1648,31 @@
         <div class="container">
             <div class="heading_container heading_center">
                 <h2>Our Categories</h2>
-                <!-- Add search bar -->
                 <div class="search-container mt-4 mb-4">
-                    <div class="input-group" style="max-width: 500px; margin: 0 auto;">
-                        <input type="text" id="searchInput" class="form-control" placeholder="Search products..." style="border-radius: 25px 0 0 25px;">
-                        <button class="btn btn-primary" type="button" id="searchButton" style="border-radius: 0 25px 25px 0; background-color: #ffbe33; border-color: #ffbe33;">
+                    <div class="search-wrapper">
+                        <input type="text" id="searchInput" class="search-input" placeholder="Search products...">
+                        <button class="search-button" type="button" id="searchButton">
                             <i class="fa fa-search"></i>
                         </button>
+                    </div>
+                    <div class="divider">
+                        <span>OR</span>
+                    </div>
+                    <div class="upload-container">
+                        <div class="upload-area" id="uploadArea">
+                            <input type="file" id="categoryImage" accept="image/*" class="file-input">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span class="upload-text">Choose a sports product image or drag it here</span>
+                            <div class="file-name" style="display: none;"></div>
+                        </div>
+                        <button class="predict-btn" id="predictButton" style="display: none;">
+                            <i class="fas fa-magic"></i> Analyze Image
+                        </button>
+                        <div id="predictionResult" class="prediction-result" style="display: none;">
+                            <div class="alert">
+                                <i class="fas fa-magic"></i> <span id="predictionText"></span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1301,53 +1759,37 @@
     <!-- end about section -->
 
     <!-- book section -->
-    <section id="contact" class="book_section layout_padding">
-        <div class="container">
-            <div class="heading_container">
-                <h2>Contact Us</h2>
+    <section id="contact" class="contact_section">
+        <div class="contact_container">
+            <div class="contact_heading text-center">
+                <h2>CONTACT US</h2>
+                <p class="text-center" style="color: #ffbe33; font-size: 1.1rem;">
+                    Have questions? We'd love to hear from you. Send us a message and we'll respond as soon as possible.
+                </p>
             </div>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form_container">
-                        <form method="post">
-                            {% csrf_token %}
-                            <div>
-                                <input type="text" class="form-control" placeholder="Your Name" />
-                            </div>
-                            <div>
-                                <input type="text" class="form-control" placeholder="Phone Number" />
-                            </div>
-                            <div>
-                                <input type="email" class="form-control" placeholder="Your Email" />
-                            </div>
-                            <div>
-                                <select class="form-control nice-select wide">
-                                    <option value="" disabled="" selected="">
-                                        about which category?
-                                    </option>
-                                    <option value="Cricket">Cricket</option>
-                                    <option value="Football">Football</option>
-                                    <option value="Badminton">Badminton</option>
-                                    <option value="Table games">Table games</option>
-                                </select>
-                            </div>
-                            <div>
-                                <input type="date" class="form-control" />
-                            </div>
-                            <div class="btn_box">
-                                <button>Submit</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="map_container">
-                        <div id="googleMap" >Geo</div>
-                    </div>
-                </div>
+            <div class="contact_form_wrapper">
+                <form method="post" id="contactForm">
+                    {% csrf_token %}
+                    <input type="text" class="form_control" placeholder="Your Name" required>
+                    <input type="tel" class="form_control" placeholder="Phone Number" required>
+                    <input type="email" class="form_control" placeholder="Your Email" required>
+                    <select class="form_control" required>
+                        <option value="" disabled selected>Select a Category</option>
+                        <option value="Cricket">Cricket</option>
+                        <option value="Football">Football</option>
+                        <option value="Badminton">Badminton</option>
+                        <option value="Table games">Table Games</option>
+                    </select>
+                    <input type="date" class="form_control" required>
+                    <textarea class="form_control" rows="4" placeholder="Your Message" required></textarea>
+                    <button type="submit" class="submit_btn">
+                        <i class="fas fa-paper-plane"></i> SEND MESSAGE
+                    </button>
+                </form>
             </div>
         </div>
     </section>
+
     <!-- end book section -->
 
     <!-- client section -->
@@ -1569,6 +2011,112 @@
 
         // Initialize add to cart on page load
         initializeAddToCart();
+
+        // File upload handling
+        const fileInput = $('#categoryImage');
+        const fileNameDisplay = $('.file-name');
+        const predictBtn = $('.predict-btn');
+        const uploadText = $('.upload-text');
+        const defaultUploadText = uploadText.text();
+
+        fileInput.on('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                fileNameDisplay.text(file.name).show();
+                predictBtn.show();
+                uploadText.text('Selected file: ' + file.name);
+            } else {
+                fileNameDisplay.hide();
+                predictBtn.hide();
+                uploadText.text(defaultUploadText);
+            }
+        });
+
+        // Drag and drop handling
+        const uploadWrapper = $('.file-upload-wrapper');
+        
+        uploadWrapper.on('dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).css('border-color', '#e69c00');
+        });
+
+        uploadWrapper.on('dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).css('border-color', '#ffbe33');
+        });
+
+        uploadWrapper.on('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            $(this).css('border-color', '#ffbe33');
+            
+            const file = e.originalEvent.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                fileInput[0].files = e.originalEvent.dataTransfer.files;
+                fileNameDisplay.text(file.name).show();
+                predictBtn.show();
+                uploadText.text('Selected file: ' + file.name);
+            }
+        });
+
+        // Prediction handling
+        $('#predictButton').click(function() {
+            const fileInput = $('#categoryImage')[0];
+            if (fileInput.files && fileInput.files[0]) {
+                const formData = new FormData();
+                formData.append('image', fileInput.files[0]);
+                
+                // Show loading state
+                $('#predictionResult').show();
+                $('#predictionText').html('<i class="fas fa-spinner fa-spin"></i> Analyzing image...');
+                
+                $.ajax({
+                    url: '{% url "predict_category_ajax" %}',
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function(response) {
+                        if (response.success) {
+                            // Update prediction text with animation
+                            $('#predictionResult').hide().fadeIn(300);
+                            $('#predictionText').html(`Detected category: <strong>${response.category}</strong>`);
+                            
+                            // Filter products by predicted category with animation
+                            $('.filters_menu li').removeClass('active');
+                            $(`.filters_menu li[data-category="${response.category}"]`).addClass('active');
+                            
+                            $('.product-item').each(function() {
+                                const productCategory = $(this).data('category');
+                                if (productCategory === response.category) {
+                                    $(this).fadeIn(300);
+                                } else {
+                                    $(this).fadeOut(300);
+                                }
+                            });
+                        } else {
+                            $('#predictionText').html('<i class="fas fa-exclamation-circle"></i> Could not predict category. Please try another image.');
+                        }
+                    },
+                    error: function() {
+                        $('#predictionText').html('<i class="fas fa-exclamation-circle"></i> Error analyzing image. Please try again.');
+                    }
+                });
+            } else {
+                alert('Please select an image first.');
+            }
+        });
+        
+        // Clear prediction when selecting a category manually
+        $('.filters_menu li').click(function() {
+            $('#predictionResult').fadeOut(300);
+            $('#categoryImage').val('');
+            $('.file-name').hide();
+            $('.predict-btn').hide();
+            $('.upload-text').text(defaultUploadText);
+        });
     });
     </script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
@@ -1635,7 +2183,7 @@
                 {% for message in messages %}
                 <div class="message {% if message.sender.customer_id == current_customer.customer_id %}sent{% else %}received{% endif %}">
                     {{ message.content }}
-                    <div class="timestamp" style="color: #000000;">{{ message.timestamp|date:"M d, Y H:i" }}</div>
+                    <div class="timestamp" style="color: #000000;">{{ message.timestamp|date:"M d, Y g:i A" }}</div>
                 </div>
                 {% endfor %}
             </div>
@@ -1931,6 +2479,35 @@
                     $(this).hide();
                 }
             });
+        });
+    });
+    </script>
+
+    <script>
+    $(document).ready(function() {
+        // Form submission handling
+        $('#contactForm').on('submit', function(e) {
+            e.preventDefault();
+            
+            // Add loading state to button
+            const submitBtn = $(this).find('.submit_btn');
+            const originalText = submitBtn.html();
+            submitBtn.html('<i class="fas fa-spinner fa-spin"></i> Sending...');
+            submitBtn.prop('disabled', true);
+            
+            // Simulate form submission (replace with actual AJAX call)
+            setTimeout(function() {
+                submitBtn.html('<i class="fas fa-check"></i> Message Sent!');
+                submitBtn.css('background-color', '#28a745');
+                
+                // Reset form
+                setTimeout(function() {
+                    $('#contactForm')[0].reset();
+                    submitBtn.html(originalText);
+                    submitBtn.css('background-color', '#ffbe33');
+                    submitBtn.prop('disabled', false);
+                }, 2000);
+            }, 1500);
         });
     });
     </script>
